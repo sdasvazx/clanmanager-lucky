@@ -1,0 +1,101 @@
+package com.clanmanager.clanmanager.repository;
+
+import com.clanmanager.clanmanager.entity.BossParticipationRecord;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
+import java.time.LocalDate;
+import java.util.List;
+
+public interface BossParticipationRecordRepository
+        extends JpaRepository<BossParticipationRecord, Long> {
+
+    List<BossParticipationRecord> findAllByOrderByBossDateDescCutTimeDescCreatedAtDesc();
+
+    Page<BossParticipationRecord> findAllByOrderByBossDateDescCutTimeDescCreatedAtDesc(Pageable pageable);
+
+    @Query("""
+            select r
+            from BossParticipationRecord r
+            where (:bossDate is null or r.bossDate = :bossDate)
+              and (:bossName = '' or lower(r.bossName) like lower(concat('%', :bossName, '%')))
+            order by r.bossDate desc, r.cutTime desc, r.createdAt desc
+            """)
+    Page<BossParticipationRecord> searchHistory(
+            @Param("bossDate") LocalDate bossDate,
+            @Param("bossName") String bossName,
+            Pageable pageable
+    );
+
+    List<BossParticipationRecord> findByBossDateBetweenOrderByBossDateAscCutTimeAsc(LocalDate startDate, LocalDate endDate);
+
+    @Query("""
+            select
+                r.activityType.activityTypeId as activityTypeId,
+                case
+                    when r.activityType.typeName = '소수쟁' then count(r)
+                    else count(distinct r.bossDate)
+                end as totalCount
+            from BossParticipationRecord r
+            where r.activityType is not null
+              and r.activityType.active = true
+              and (
+                  r.attendanceApplied is null
+                  or r.attendanceApplied = true
+              )
+              and (
+                  :startDate is null
+                  or r.bossDate >= :startDate
+              )
+              and (
+                  :endDate is null
+                  or r.bossDate <= :endDate
+              )
+            group by r.activityType.activityTypeId, r.activityType.typeName
+            """)
+    List<ActivityOccurrenceCountProjection>
+    findAppliedActivityOccurrenceCountsByPeriod(
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate
+    );
+
+    @Query("""
+            select
+                r.activityType.activityTypeId as activityTypeId,
+                case
+                    when r.activityType.typeName = '소수쟁' then count(r)
+                    else count(distinct r.bossDate)
+                end as totalCount
+            from BossParticipationRecord r
+            where r.activityType is not null
+              and r.activityType.active = true
+              and (
+                  r.attendanceApplied is null
+                  or r.attendanceApplied = true
+              )
+              and (
+                  :startDate is null
+                  or r.bossDate >= :startDate
+              )
+              and (
+                  :endDate is null
+                  or r.bossDate <= :endDate
+              )
+            group by r.activityType.activityTypeId, r.activityType.typeName
+            """)
+    List<ActivityOccurrenceCountProjection>
+    findPenaltyActivityOccurrenceCountsByPeriod(
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate
+    );
+
+    interface ActivityOccurrenceCountProjection {
+
+        Long getActivityTypeId();
+
+        Long getTotalCount();
+    }
+}
