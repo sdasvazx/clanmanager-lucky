@@ -1606,6 +1606,54 @@ function NoticePanel({ member, notices, onReload }) {
   );
 }
 
+function VampirNoticePanel({ notices, newNoticeCount, connected, onClearNew }) {
+  const [expanded, setExpanded] = useState(true);
+
+  return (
+    <section className="white-card vampir-notices">
+      <div className="section-heading">
+        <div>
+          <div className="vampir-notice-title-row">
+            <h2>뱀피르 공식 공지</h2>
+            {newNoticeCount > 0 && (
+              <button type="button" className="vampir-new-badge" onClick={onClearNew} title="새 공지 표시 지우기">
+                NEW {newNoticeCount}
+              </button>
+            )}
+          </div>
+          <p className="subtle">넷마블 공식 포럼 공지를 10분마다 확인합니다.</p>
+        </div>
+        <div className="notice-actions">
+          <span className={connected ? 'sse-status connected' : 'sse-status'}>{connected ? '실시간 연결' : '재연결 중'}</span>
+          <button type="button" className="outline-button no-margin" onClick={() => setExpanded((value) => !value)}>
+            {expanded ? '공지 접기' : '공지 펼치기'}
+          </button>
+        </div>
+      </div>
+      {expanded &&
+        (notices.length ? (
+          <div className="vampir-notice-list">
+            {notices.map((notice) => (
+              <a className="vampir-notice-row" href={notice.url} target="_blank" rel="noreferrer" key={notice.articleId}>
+                {notice.thumbnailUrl && <img src={notice.thumbnailUrl} alt="" loading="lazy" />}
+                <div>
+                  <div className="vampir-notice-meta">
+                    <span className={notice.type === 'NOTICE' ? 'official' : ''}>{notice.type === 'NOTICE' ? '공지' : '일반'}</span>
+                    <time>{notice.regDate ? new Date(notice.regDate).toLocaleString('ko-KR') : '-'}</time>
+                  </div>
+                  <strong>{notice.title}</strong>
+                </div>
+                <span className="vampir-notice-open" aria-hidden="true">↗</span>
+              </a>
+            ))}
+          </div>
+        ) : (
+          <div className="empty-state compact">수집된 뱀피르 공식 공지가 없습니다.</div>
+        ))}
+    </section>
+  );
+}
+
 function Lobby({ member, setPage, favoritePages = [] }) {
   const [notices, setNotices] = useState([]);
   const [members, setMembers] = useState([]);
@@ -1613,6 +1661,7 @@ function Lobby({ member, setPage, favoritePages = [] }) {
   const [forumNews, setForumNews] = useState([]);
   const [forumNewsUnavailable, setForumNewsUnavailable] = useState(false);
   const [newForumNoticeCount, setNewForumNoticeCount] = useState(0);
+  const [noticeStreamConnected, setNoticeStreamConnected] = useState(false);
   const [message, setMessage] = useState('');
   const currentPeriod = getParticipationPeriod(getCurrentParticipationPeriodIndex());
   const load = async () => {
@@ -1636,6 +1685,8 @@ function Lobby({ member, setPage, favoritePages = [] }) {
   }, []);
   useEffect(() => {
     const eventSource = new EventSource(`${API_BASE}/notice/subscribe`);
+    eventSource.onopen = () => setNoticeStreamConnected(true);
+    eventSource.onerror = () => setNoticeStreamConnected(false);
     const handleNewNotice = (event) => {
       try {
         const incoming = JSON.parse(event.data);
@@ -1681,6 +1732,12 @@ function Lobby({ member, setPage, favoritePages = [] }) {
   return (
     <>
       <NoticePanel member={member} notices={notices} onReload={load} />
+      <VampirNoticePanel
+        notices={forumNews}
+        newNoticeCount={newForumNoticeCount}
+        connected={noticeStreamConnected}
+        onClearNew={() => setNewForumNoticeCount(0)}
+      />
       {message && <div className="info-banner warning-banner">{message}</div>}
       <div className="page-title center">
         <h1>클랜 종합정보</h1>
@@ -1696,31 +1753,6 @@ function Lobby({ member, setPage, favoritePages = [] }) {
             </button>
           ))}
         </div>
-      </section>
-      <section className="white-card forum-news-card" onClick={() => setNewForumNoticeCount(0)}>
-        <div className="section-heading forum-news-heading">
-          <div>
-            <h2>📣 뱀피르 공식 최신 소식 {newForumNoticeCount > 0 && <span className="forum-news-badge">새 공지 {newForumNoticeCount}</span>}</h2>
-            <p className="subtle">공식 포럼을 10분마다 확인하며, 새 공지는 실시간 알림으로 로비에 반영됩니다.</p>
-          </div>
-          <a className="forum-link-button" href={VAMPIR_FORUM_URL} target="_blank" rel="noreferrer">
-            공식 포럼 열기 ↗
-          </a>
-        </div>
-        {forumNews.length ? (
-          <div className="forum-news-list">
-            {forumNews.map((news) => (
-              <a key={news.articleId} href={news.url} target="_blank" rel="noreferrer" className="forum-news-row">
-                <span>{news.title}</span>
-                <time>{news.regDate ? new Date(news.regDate).toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '최신'}</time>
-              </a>
-            ))}
-          </div>
-        ) : (
-          <div className="empty-state compact forum-news-empty">
-            {forumNewsUnavailable ? '최신 소식을 불러오지 못했습니다. 공식 포럼에서 확인해 주세요.' : '등록된 최신 소식이 없습니다.'}
-          </div>
-        )}
       </section>
       <ParticipationRanking rows={participationRows} totalCount={participationSummary?.totalMemberCount ?? members.length} periodLabel={defaultPeriodName(currentPeriod)} />
     </>
