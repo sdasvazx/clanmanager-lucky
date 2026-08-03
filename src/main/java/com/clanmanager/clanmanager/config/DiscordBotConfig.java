@@ -76,8 +76,8 @@ public class DiscordBotConfig {
                 Commands.slash("사이트", "운좋은 클랜 사이트 주소를 표시합니다."),
                 Commands.slash("도움말", "사용 가능한 명령어와 사용법을 표시합니다."),
                 Commands.slash("공지", "현재 클랜 공지를 표시합니다."),
-                Commands.slash("노래", "유튜브에서 노래를 검색해 음성 채널에서 재생합니다.")
-                        .addOption(OptionType.STRING, "검색어", "곡명, 가수 또는 유튜브 주소", true),
+                Commands.slash("노래", "노래를 검색해 음성 채널에서 재생합니다.")
+                        .addOption(OptionType.STRING, "검색어", "곡명 또는 가수", true),
                 Commands.slash("정지", "현재 노래를 멈추고 대기열을 비웁니다."),
                 Commands.slash("스킵", "현재 노래를 건너뛰고 다음 곡을 재생합니다."),
                 Commands.slash("나가기", "노래를 멈추고 봇을 음성 채널에서 내보냅니다."),

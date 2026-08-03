@@ -81,7 +81,7 @@ public class DiscordSlashCommandService extends ListenerAdapter {
         }
         OptionMapping queryOption = event.getOption("검색어");
         if (queryOption == null || queryOption.getAsString().isBlank()) {
-            event.reply("검색할 곡명이나 유튜브 주소를 입력해 주세요.").queue();
+            event.reply("검색할 곡명이나 가수를 입력해 주세요.").queue();
             return;
         }
 
@@ -170,7 +170,7 @@ public class DiscordSlashCommandService extends ListenerAdapter {
                 `/도움말` 명령어와 사용법 확인
                 `/공지` 현재 클랜 공지 확인
                 `/공지등록 내용:...` 공지 변경(서버 관리자 전용)
-                `/노래 검색어:곡명 또는 유튜브 주소` 음성 채널에서 순서대로 재생
+                `/노래 검색어:곡명 또는 가수` 음성 채널에서 순서대로 재생
                 `/목록` 현재 곡과 신청 대기열 확인
                 `/스킵` 다음 곡으로 이동
                 `/정지` 재생 중지 및 대기열 비우기
