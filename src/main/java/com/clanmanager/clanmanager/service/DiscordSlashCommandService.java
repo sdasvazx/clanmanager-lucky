@@ -45,15 +45,15 @@ public class DiscordSlashCommandService extends ListenerAdapter {
         switch (event.getName()) {
             case "보스일정" -> event.reply(scheduleMessage()).queue();
             case "다음보스" -> event.reply(nextBossMessage(LocalDateTime.now(KOREA))).queue();
-            case "감시상태" -> event.reply(watchStatusMessage()).setEphemeral(true).queue();
+            case "감시상태" -> event.reply(watchStatusMessage()).queue();
             case "알림테스트" -> event.reply("운좋은 알림봇이 정상 작동 중입니다.").queue();
             case "운세" -> replyFortune(event);
             case "뽑기" -> replyDraw(event);
             case "사이트" -> event.reply("운좋은 클랜 사이트\n" + CLAN_SITE).queue();
-            case "도움말" -> event.reply(helpMessage()).setEphemeral(true).queue();
+            case "도움말" -> event.reply(helpMessage()).queue();
             case "공지" -> event.reply(discordBotNoticeService.getNotice()).queue();
             case "공지등록" -> updateNotice(event);
-            default -> event.reply("지원하지 않는 명령어입니다. `/도움말`을 확인해 주세요.").setEphemeral(true).queue();
+            default -> event.reply("지원하지 않는 명령어입니다. `/도움말`을 확인해 주세요.").queue();
         }
     }
 
@@ -67,13 +67,13 @@ public class DiscordSlashCommandService extends ListenerAdapter {
     private void replyDraw(SlashCommandInteractionEvent event) {
         OptionMapping countOption = event.getOption("숫자");
         if (countOption == null) {
-            event.reply("뽑을 숫자를 입력해 주세요.").setEphemeral(true).queue();
+            event.reply("뽑을 숫자를 입력해 주세요.").queue();
             return;
         }
 
         OptionMapping memberOption = event.getOption("인원목록");
         if (memberOption == null || memberOption.getAsString().isBlank()) {
-            event.reply("인원목록을 쉼표로 구분해 입력해 주세요.").setEphemeral(true).queue();
+            event.reply("인원목록을 쉼표로 구분해 입력해 주세요.").queue();
             return;
         }
         List<String> members = List.of(memberOption.getAsString().split("[,，\\n]"))
@@ -83,19 +83,18 @@ public class DiscordSlashCommandService extends ListenerAdapter {
                 .toList();
 
         if (members.size() > 50) {
-            event.reply("인원은 최대 50명까지 입력할 수 있습니다.").setEphemeral(true).queue();
+            event.reply("인원은 최대 50명까지 입력할 수 있습니다.").queue();
             return;
         }
 
         int drawCount = countOption.getAsInt();
         Set<String> uniqueMembers = new HashSet<>(members);
         if (uniqueMembers.size() != members.size()) {
-            event.reply("같은 인원을 두 번 입력할 수 없습니다.").setEphemeral(true).queue();
+            event.reply("같은 인원을 두 번 입력할 수 없습니다.").queue();
             return;
         }
         if (drawCount < 1 || drawCount > members.size()) {
-            event.reply("숫자는 1부터 입력한 인원 수(" + members.size() + ") 사이로 입력해 주세요.")
-                    .setEphemeral(true).queue();
+            event.reply("숫자는 1부터 입력한 인원 수(" + members.size() + ") 사이로 입력해 주세요.").queue();
             return;
         }
 
@@ -105,16 +104,16 @@ public class DiscordSlashCommandService extends ListenerAdapter {
 
     private void updateNotice(SlashCommandInteractionEvent event) {
         if (event.getMember() == null || !event.getMember().hasPermission(Permission.MANAGE_SERVER)) {
-            event.reply("서버 관리 권한이 있는 사람만 공지를 등록할 수 있습니다.").setEphemeral(true).queue();
+            event.reply("서버 관리 권한이 있는 사람만 공지를 등록할 수 있습니다.").queue();
             return;
         }
         OptionMapping content = event.getOption("내용");
         if (content == null || content.getAsString().isBlank()) {
-            event.reply("공지 내용을 입력해 주세요.").setEphemeral(true).queue();
+            event.reply("공지 내용을 입력해 주세요.").queue();
             return;
         }
         discordBotNoticeService.updateNotice(content.getAsString().trim());
-        event.reply("공지를 저장했습니다. `/공지`로 확인할 수 있습니다.").setEphemeral(true).queue();
+        event.reply("공지를 저장했습니다. `/공지`로 확인할 수 있습니다.").queue();
     }
 
     static List<String> drawMembers(List<String> members, int count, java.util.Random random) {
