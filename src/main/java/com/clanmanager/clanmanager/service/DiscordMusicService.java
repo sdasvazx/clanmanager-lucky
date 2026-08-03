@@ -10,6 +10,10 @@ import com.sedmelluq.discord.lavaplayer.track.AudioTrack;
 import com.sedmelluq.discord.lavaplayer.track.AudioTrackEndReason;
 import com.sedmelluq.discord.lavaplayer.player.event.AudioEventAdapter;
 import dev.lavalink.youtube.YoutubeAudioSourceManager;
+import dev.lavalink.youtube.clients.MusicWithThumbnail;
+import dev.lavalink.youtube.clients.MWebWithThumbnail;
+import dev.lavalink.youtube.clients.TvHtml5SimplyWithThumbnail;
+import dev.lavalink.youtube.clients.WebWithThumbnail;
 import jakarta.annotation.PreDestroy;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.channel.middleman.AudioChannel;
@@ -30,7 +34,18 @@ public class DiscordMusicService {
 
     public DiscordMusicService() {
         playerManager = new DefaultAudioPlayerManager();
-        playerManager.registerSourceManager(new YoutubeAudioSourceManager());
+        // YouTube regularly retires or blocks InnerTube clients. In particular,
+        // WEB_EMBEDDED_PLAYER and ANDROID_VR can accept a search result and then
+        // fail as soon as playback starts. TVHTML5_SIMPLY is the current playback
+        // client recommended by youtube-source; the other clients remain as
+        // search/metadata and playback fallbacks.
+        playerManager.registerSourceManager(new YoutubeAudioSourceManager(
+                true,
+                new MusicWithThumbnail(),
+                new TvHtml5SimplyWithThumbnail(),
+                new MWebWithThumbnail(),
+                new WebWithThumbnail()
+        ));
     }
 
     public void play(Guild guild, AudioChannel voiceChannel, String query, String requester, Consumer<String> callback) {
