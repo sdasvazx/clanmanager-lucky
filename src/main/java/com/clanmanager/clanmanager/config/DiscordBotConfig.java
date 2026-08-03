@@ -7,9 +7,15 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
+import net.dv8tion.jda.api.interactions.commands.OptionType;
+import net.dv8tion.jda.api.interactions.commands.build.CommandData;
 import net.dv8tion.jda.api.interactions.commands.build.Commands;
+import net.dv8tion.jda.api.interactions.commands.build.SlashCommandData;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+
+import java.util.ArrayList;
+import java.util.List;
 
 @Component
 @RequiredArgsConstructor
@@ -36,13 +42,7 @@ public class DiscordBotConfig {
                     .build()
                     .awaitReady();
 
-            var commands = java.util.List.of(
-                    Commands.slash("보스일정", "매일 보스 일정을 확인합니다."),
-                    Commands.slash("다음보스", "가장 가까운 다음 보스를 확인합니다."),
-                    Commands.slash("감시상태", "게임 화면 숫자 감시 상태를 확인합니다."),
-                    Commands.slash("알림테스트", "운좋은 알림봇 연결 상태를 확인합니다.")
-            );
-
+            List<CommandData> commands = commandDefinitions();
             if (jda.getGuilds().isEmpty()) {
                 jda.updateCommands().addCommands(commands).queue();
                 log.info("Registered global Discord slash commands.");
@@ -56,6 +56,27 @@ public class DiscordBotConfig {
         } catch (RuntimeException ex) {
             log.error("Failed to connect Discord bot. Check DISCORD_BOT_TOKEN.", ex);
         }
+    }
+
+    static List<CommandData> commandDefinitions() {
+        List<CommandData> commands = new ArrayList<>(List.of(
+                Commands.slash("보스일정", "매일 보스 일정을 확인합니다."),
+                Commands.slash("다음보스", "가장 가까운 다음 보스를 확인합니다."),
+                Commands.slash("감시상태", "게임 화면 숫자 감시 상태를 확인합니다."),
+                Commands.slash("알림테스트", "운좋은 알림봇 연결 상태를 확인합니다."),
+                Commands.slash("운세", "오늘의 운세를 확인합니다."),
+                Commands.slash("사이트", "운좋은 클랜 사이트 주소를 표시합니다."),
+                Commands.slash("도움말", "사용 가능한 명령어와 사용법을 표시합니다."),
+                Commands.slash("공지", "현재 클랜 공지를 표시합니다."),
+                Commands.slash("공지등록", "클랜 공지를 변경합니다.")
+                        .addOption(OptionType.STRING, "내용", "표시할 공지 내용", true)
+        ));
+
+        SlashCommandData draw = Commands.slash("뽑기", "입력한 인원 중 지정한 숫자만큼 무작위로 뽑습니다.")
+                .addOption(OptionType.INTEGER, "숫자", "뽑을 사람 수", true)
+                .addOption(OptionType.STRING, "인원목록", "쉼표로 구분한 인원 이름(최대 50명)", true);
+        commands.add(draw);
+        return List.copyOf(commands);
     }
 
     @PreDestroy
