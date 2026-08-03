@@ -1,0 +1,5 @@
+config.json
+watch-state.json
+debug-captures/
+__pycache__/
+*.pyc

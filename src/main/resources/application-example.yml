@@ -15,3 +15,9 @@ spring:
 
 server:
   port: 8080
+
+watch:
+  api-key: ${WATCH_API_KEY:replace-with-a-long-random-secret}
+
+discord:
+  webhook-url: ${DISCORD_WEBHOOK_URL:https://discord.com/api/webhooks/replace/me}

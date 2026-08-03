@@ -1,0 +1,26 @@
+{
+  "backend": {
+    "baseUrl": "https://clanmanager-lucky-production.up.railway.app",
+    "apiKey": "replace-with-the-same-random-value-as-WATCH_API_KEY"
+  },
+  "intervalSeconds": 2,
+  "easyocrGpu": false,
+  "stateFile": "watch-state.json",
+  "debugDirectory": "debug-captures",
+  "defaults": {
+    "threshold": 150,
+    "diffThreshold": 2.0
+  },
+  "targets": [
+    {
+      "targetId": "입장가능인원",
+      "monitor": 1,
+      "region": {
+        "left": 632,
+        "top": 276,
+        "width": 45,
+        "height": 26
+      }
+    }
+  ]
+}
