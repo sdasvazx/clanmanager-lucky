@@ -37,6 +37,9 @@ dependencies {
 
     // Discord bot / slash commands
     implementation 'net.dv8tion:JDA:6.5.0'
+    implementation 'moe.kyokobot.libdave:adapter-jda:0.1.2'
+    implementation 'moe.kyokobot.libdave:impl-jni:0.1.2'
+    runtimeOnly 'moe.kyokobot.libdave:natives-linux-x86-64:0.1.2'
     implementation 'dev.arbjerg:lavaplayer:2.2.6'
     implementation 'dev.lavalink.youtube:v2:1.18.2'
 

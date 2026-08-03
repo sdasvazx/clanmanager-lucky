@@ -5,8 +5,12 @@ import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import moe.kyokobot.libdave.DaveFactory;
+import moe.kyokobot.libdave.NativeDaveFactory;
+import moe.kyokobot.libdave.jda.LDJDADaveSessionFactory;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
+import net.dv8tion.jda.api.audio.AudioModuleConfig;
 import net.dv8tion.jda.api.utils.MemberCachePolicy;
 import net.dv8tion.jda.api.utils.cache.CacheFlag;
 import net.dv8tion.jda.api.requests.GatewayIntent;
@@ -40,7 +44,12 @@ public class DiscordBotConfig {
         }
 
         try {
+            DaveFactory daveFactory = new NativeDaveFactory();
+            var daveSessionFactory = new LDJDADaveSessionFactory(daveFactory);
+
             jda = JDABuilder.createLight(botToken)
+                    .setAudioModuleConfig(new AudioModuleConfig()
+                            .withDaveSessionFactory(daveSessionFactory))
                     .enableIntents(GatewayIntent.GUILD_VOICE_STATES)
                     // createLight disables member/voice caches by default. Music commands
                     // need the invoking member's current voice channel from the gateway cache.
