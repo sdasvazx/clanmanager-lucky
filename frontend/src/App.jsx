@@ -1612,10 +1612,11 @@ function Lobby({ member, setPage, favoritePages = [] }) {
   const [participationSummary, setParticipationSummary] = useState(null);
   const [forumNews, setForumNews] = useState([]);
   const [forumNewsUnavailable, setForumNewsUnavailable] = useState(false);
+  const [newForumNoticeCount, setNewForumNoticeCount] = useState(0);
   const [message, setMessage] = useState('');
   const currentPeriod = getParticipationPeriod(getCurrentParticipationPeriodIndex());
   const load = async () => {
-    const [noticeResult, memberResult, participationResult, forumResult] = await Promise.allSettled([request('/notices'), request('/members'), request(`/participation?startDate=${currentPeriod.start}&endDate=${currentPeriod.end}`), request('/external-news/vampir')]);
+    const [noticeResult, memberResult, participationResult, forumResult] = await Promise.allSettled([request('/notices'), request('/members'), request(`/participation?startDate=${currentPeriod.start}&endDate=${currentPeriod.end}`), request('/notice')]);
 
     if (noticeResult.status === 'fulfilled') setNotices(Array.isArray(noticeResult.value) ? noticeResult.value : []);
     if (memberResult.status === 'fulfilled') setMembers(Array.isArray(memberResult.value) ? memberResult.value : []);
@@ -1632,6 +1633,32 @@ function Lobby({ member, setPage, favoritePages = [] }) {
   };
   useEffect(() => {
     load();
+  }, []);
+  useEffect(() => {
+    const eventSource = new EventSource(`${API_BASE}/notice/subscribe`);
+    const handleNewNotice = (event) => {
+      try {
+        const incoming = JSON.parse(event.data);
+        const rows = Array.isArray(incoming) ? incoming : [incoming];
+        const validRows = rows.filter((row) => row?.articleId);
+        if (!validRows.length) return;
+        setNewForumNoticeCount((count) => count + validRows.length);
+        setForumNews((current) => {
+          const merged = [...validRows, ...current];
+          return [...new Map(merged.map((row) => [row.articleId, row])).values()]
+            .sort((a, b) => String(b.regDate || '').localeCompare(String(a.regDate || '')))
+            .slice(0, 20);
+        });
+        setForumNewsUnavailable(false);
+      } catch {
+        request('/notice').then((rows) => setForumNews(Array.isArray(rows) ? rows : [])).catch(() => {});
+      }
+    };
+    eventSource.addEventListener('newNotice', handleNewNotice);
+    return () => {
+      eventSource.removeEventListener('newNotice', handleNewNotice);
+      eventSource.close();
+    };
   }, []);
   const participationRows = useMemo(() => participationSummary?.rows || [], [participationSummary]);
   const quickActions = [
@@ -1670,11 +1697,11 @@ function Lobby({ member, setPage, favoritePages = [] }) {
           ))}
         </div>
       </section>
-      <section className="white-card forum-news-card">
+      <section className="white-card forum-news-card" onClick={() => setNewForumNoticeCount(0)}>
         <div className="section-heading forum-news-heading">
           <div>
-            <h2>📣 뱀피르 공식 최신 소식</h2>
-            <p className="subtle">공식 포럼에 새 공지가 등록되면 로비에서도 자동으로 최신 목록을 확인할 수 있습니다.</p>
+            <h2>📣 뱀피르 공식 최신 소식 {newForumNoticeCount > 0 && <span className="forum-news-badge">새 공지 {newForumNoticeCount}</span>}</h2>
+            <p className="subtle">공식 포럼을 10분마다 확인하며, 새 공지는 실시간 알림으로 로비에 반영됩니다.</p>
           </div>
           <a className="forum-link-button" href={VAMPIR_FORUM_URL} target="_blank" rel="noreferrer">
             공식 포럼 열기 ↗
@@ -1683,9 +1710,9 @@ function Lobby({ member, setPage, favoritePages = [] }) {
         {forumNews.length ? (
           <div className="forum-news-list">
             {forumNews.map((news) => (
-              <a key={news.url} href={news.url} target="_blank" rel="noreferrer" className="forum-news-row">
+              <a key={news.articleId} href={news.url} target="_blank" rel="noreferrer" className="forum-news-row">
                 <span>{news.title}</span>
-                <time>{news.date || '최신'}</time>
+                <time>{news.regDate ? new Date(news.regDate).toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '최신'}</time>
               </a>
             ))}
           </div>

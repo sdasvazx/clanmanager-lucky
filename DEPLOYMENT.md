@@ -45,6 +45,10 @@ VITE_API_BASE_URL=https://your-backend-domain.up.railway.app/api
 
 프론트 배포 후에는 Railway 백엔드의 `CORS_ALLOWED_ORIGINS`에 프론트 주소를 반드시 추가해야 합니다.
 
+### SSE 프록시 주의사항
+
+공지 실시간 알림은 `/api/notice/subscribe`의 Server-Sent Events(SSE)를 사용합니다. Nginx 같은 리버스 프록시를 앞에 둘 경우 응답 버퍼링 때문에 이벤트가 늦게 도착할 수 있으므로 해당 경로에는 `proxy_buffering off;`를 적용해야 합니다. 현재 emitter 목록은 서버 1대 기준이며, 서버를 여러 대로 확장할 때는 Redis Pub/Sub 같은 공유 이벤트 채널이 필요합니다.
+
 ## 운영 전 체크리스트
 
 - [ ] Railway 백엔드 도메인 접속 확인
@@ -62,4 +66,3 @@ VITE_API_BASE_URL=https://your-backend-domain.up.railway.app/api
 - 로그를 너무 많이 찍지 않도록 `JPA_SHOW_SQL=false`를 유지합니다.
 - 이미지 업로드 원본 저장은 아직 하지 않습니다. OCR은 별도 Python OCR 서버에서 처리됩니다.
 - DB 백업은 초반엔 수동 export라도 주기적으로 받습니다.
-
