@@ -9,6 +9,7 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080/api
 const OCR_API_BASE = import.meta.env.VITE_OCR_API_BASE_URL ?? (import.meta.env.DEV ? 'http://localhost:8090' : '');
 const OCR_API_KEY = import.meta.env.VITE_OCR_API_KEY ?? '';
 const ROULETTE_URL = 'https://lazygyu.github.io/roulette/';
+const VAMPIR_FORUM_URL = 'https://forum.netmarble.com/vampir/list/2';
 const DEFAULT_INITIAL_PASSWORD = '112200';
 
 const THEME_PRESETS = [
@@ -163,14 +164,11 @@ const NICKNAME_CHAR_PATTERN = /[^0-9A-Za-z\uAC00-\uD7A3]/g;
 const OCR_NOISE_WORDS = new Set(['lv', 'lvl', 'level', 'l', 'v', 'iv', 'il', 'i', '공격대', '파티', '자리', '빈칸', '추가']);
 const OCR_CORRECTION_STORAGE_KEY = 'clanmanagerOcrCorrections';
 const OCR_FILTER_STORAGE_KEY = 'clanmanagerOcrFilters';
-const clanOptions = ['귀신', '운좋은사람들', '귀신Z', '로망'];
+const clanOptions = ['운좋은'];
 const classOptions = ['그림리퍼', '바이퍼', '블러드스테인', '아카샤', '카니지'];
 const rosterSettingStorageKey = 'clanmanager:roster-settings';
 const defaultRosterSettings = {
   clans: [
-    { id: 'clan-ghost', name: '귀신', color: '#dc2626' },
-    { id: 'clan-ghost-z', name: '귀신Z', color: '#10b981' },
-    { id: 'clan-romang', name: '로망', color: '#3b82f6' },
     { id: 'clan-lucky', name: '운좋은', color: '#a855f7' },
   ],
   classes: [
@@ -195,7 +193,7 @@ const readRosterSettings = () => {
   try {
     const parsed = JSON.parse(localStorage.getItem(rosterSettingStorageKey) || '{}');
     return {
-      clans: normalizeSettingItems(parsed.clans, defaultRosterSettings.clans),
+      clans: defaultRosterSettings.clans,
       classes: normalizeSettingItems(parsed.classes, defaultRosterSettings.classes),
     };
   } catch {
@@ -421,17 +419,14 @@ const preferFreshActivitySettings = (apiRows = []) => {
   const cachedRows = readCachedActivitySettings();
   return cachedRows.length > (Array.isArray(apiRows) ? apiRows.length : 0) ? cachedRows : apiRows;
 };
-const clanDisplayOrder = ['귀신', '운좋은사람들', '귀신Z', '로망'];
+const clanDisplayOrder = ['운좋은'];
 
 function canonicalClanName(value) {
   const name = String(value ?? '').trim();
   const key = normalize(name);
   if (!key) return '미분류';
-  if (key.includes('귀신z') || key.includes('귀신제트')) return '귀신Z';
-  if (key.includes('운좋은')) return '운좋은사람들';
-  if (key.includes('로망')) return '로망';
+  if (key.includes('운좋은')) return '운좋은';
   if (key.includes('게헨나')) return '게헨나';
-  if (key.includes('귀신')) return '귀신';
   return name;
 }
 
@@ -1615,14 +1610,22 @@ function Lobby({ member, setPage, favoritePages = [] }) {
   const [notices, setNotices] = useState([]);
   const [members, setMembers] = useState([]);
   const [participationSummary, setParticipationSummary] = useState(null);
+  const [forumNews, setForumNews] = useState([]);
+  const [forumNewsUnavailable, setForumNewsUnavailable] = useState(false);
   const [message, setMessage] = useState('');
   const currentPeriod = getParticipationPeriod(getCurrentParticipationPeriodIndex());
   const load = async () => {
-    const [noticeResult, memberResult, participationResult] = await Promise.allSettled([request('/notices'), request('/members'), request(`/participation?startDate=${currentPeriod.start}&endDate=${currentPeriod.end}`)]);
+    const [noticeResult, memberResult, participationResult, forumResult] = await Promise.allSettled([request('/notices'), request('/members'), request(`/participation?startDate=${currentPeriod.start}&endDate=${currentPeriod.end}`), request('/external-news/vampir')]);
 
     if (noticeResult.status === 'fulfilled') setNotices(Array.isArray(noticeResult.value) ? noticeResult.value : []);
     if (memberResult.status === 'fulfilled') setMembers(Array.isArray(memberResult.value) ? memberResult.value : []);
     if (participationResult.status === 'fulfilled') setParticipationSummary(participationResult.value || null);
+    if (forumResult.status === 'fulfilled') {
+      setForumNews(Array.isArray(forumResult.value) ? forumResult.value : []);
+      setForumNewsUnavailable(false);
+    } else {
+      setForumNewsUnavailable(true);
+    }
 
     const failed = [noticeResult.status === 'rejected' ? '공지' : null, memberResult.status === 'rejected' ? '클랜원' : null, participationResult.status === 'rejected' ? '참여율' : null].filter(Boolean);
     setMessage(failed.length ? `${failed.join(', ')} 정보를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.` : '');
@@ -1667,13 +1670,38 @@ function Lobby({ member, setPage, favoritePages = [] }) {
           ))}
         </div>
       </section>
+      <section className="white-card forum-news-card">
+        <div className="section-heading forum-news-heading">
+          <div>
+            <h2>📣 뱀피르 공식 최신 소식</h2>
+            <p className="subtle">공식 포럼에 새 공지가 등록되면 로비에서도 자동으로 최신 목록을 확인할 수 있습니다.</p>
+          </div>
+          <a className="forum-link-button" href={VAMPIR_FORUM_URL} target="_blank" rel="noreferrer">
+            공식 포럼 열기 ↗
+          </a>
+        </div>
+        {forumNews.length ? (
+          <div className="forum-news-list">
+            {forumNews.map((news) => (
+              <a key={news.url} href={news.url} target="_blank" rel="noreferrer" className="forum-news-row">
+                <span>{news.title}</span>
+                <time>{news.date || '최신'}</time>
+              </a>
+            ))}
+          </div>
+        ) : (
+          <div className="empty-state compact forum-news-empty">
+            {forumNewsUnavailable ? '최신 소식을 불러오지 못했습니다. 공식 포럼에서 확인해 주세요.' : '등록된 최신 소식이 없습니다.'}
+          </div>
+        )}
+      </section>
       <ParticipationRanking rows={participationRows} totalCount={participationSummary?.totalMemberCount ?? members.length} periodLabel={defaultPeriodName(currentPeriod)} />
     </>
   );
 }
 
 function ParticipationRanking({ rows, totalCount, periodLabel = '' }) {
-  const targetClans = clanDisplayOrder.slice(0, 4);
+  const targetClans = clanDisplayOrder;
   const grouped = new Map(groupByClan(rows));
 
   return (
@@ -2639,7 +2667,7 @@ function Attendance({ member, setPage, mode = 'check' }) {
     cutTime: '21:00',
     bossName: '21시 보스',
     score: 1,
-    clanName: '로망',
+    clanName: '운좋은',
     memo: '',
   });
   const [draftByClan, setDraftByClan] = useState({});
@@ -5532,7 +5560,7 @@ function PaymentPage({ member }) {
   );
 }
 
-const DISTRIBUTION_CLANS = ['귀신', '운좋은', '귀신Z', '로망'];
+const DISTRIBUTION_CLANS = ['운좋은'];
 
 function DistributionAdminPage({ member }) {
   const initialSettings = {
@@ -5543,9 +5571,9 @@ function DistributionAdminPage({ member }) {
     totalDiamonds: 0,
     totalParticipationDiamonds: 0,
     totalPowerDiamonds: 0,
-    clanDiamonds: { 귀신: 0, 운좋은: 0, 귀신Z: 0, 로망: 0 },
-    participationDiamonds: { 귀신: 0, 운좋은: 0, 귀신Z: 0, 로망: 0 },
-    powerDiamonds: { 귀신: 0, 운좋은: 0, 귀신Z: 0, 로망: 0 },
+    clanDiamonds: { 운좋은: 0 },
+    participationDiamonds: { 운좋은: 0 },
+    powerDiamonds: { 운좋은: 0 },
     memo: '',
   };
   const [settings, setSettings] = useState(initialSettings);
@@ -6541,8 +6569,8 @@ function AllItemsPage({ member, setPage }) {
   const [rows, setRows] = useState([]);
   const [message, setMessage] = useState('');
   const [saving, setSaving] = useState(false);
-  const allItemTabs = ['귀신', '운좋은', '귀신Z', '로망', '총합'];
-  const [selectedClan, setSelectedClan] = useState('귀신');
+  const allItemTabs = ['운좋은'];
+  const [selectedClan, setSelectedClan] = useState('운좋은');
   const readOnly = selectedClan === '총합';
   const load = () =>
     request(`/management/all-items?clanName=${encodeURIComponent(readOnly ? '총합' : selectedClan)}`)
@@ -6627,7 +6655,7 @@ function AllItemsPage({ member, setPage }) {
             </button>
           ))}
         </div>
-        <p className="muted-text">{readOnly ? '총합 탭은 귀신/운좋은/귀신Z/로망 재고와 지급 수량을 합산해서 보여주는 읽기 전용 화면입니다.' : `${selectedClan} 클랜의 재고와 지급 수량만 저장됩니다.`}</p>
+        <p className="muted-text">{`${selectedClan} 클랜의 재고와 지급 수량만 저장됩니다.`}</p>
       </section>
       {message && <p className="vault-message">{message}</p>}
       <section className="white-card all-items-card">
@@ -8865,7 +8893,7 @@ function GeneralSettingsPage({ setPage }) {
 
   const persist = (next) => {
     const cleaned = {
-      clans: normalizeSettingItems(next.clans, defaultRosterSettings.clans),
+      clans: defaultRosterSettings.clans,
       classes: normalizeSettingItems(next.classes, defaultRosterSettings.classes),
     };
     setDraft(cleaned);
@@ -8965,7 +8993,16 @@ function GeneralSettingsPage({ setPage }) {
       {message && <p className="vault-message">{message}</p>}
       <div className="info-banner">기타설정은 선택 화면이 아니라 목록 관리 화면입니다. 클래스는 아래에서 추가/수정한 뒤 클랜원 관리나 마이페이지의 클래스 선택창에서 고르면 됩니다.</div>
       <div className="roster-settings-grid">
-        {card('clans', '클랜 목록', '클랜명 입력')}
+        <section className="white-card roster-setting-card">
+          <h2>클랜 목록</h2>
+          <div className="info-banner">운좋은 전용 서비스이므로 클랜은 운좋은 하나로 고정됩니다.</div>
+          <div className="setting-list">
+            <div className="setting-list-row">
+              <span className="setting-preview-pill" style={{ background: defaultRosterSettings.clans[0].color }}>운좋은</span>
+              <b>운좋은</b>
+            </div>
+          </div>
+        </section>
         {card('classes', '클래스 목록', '클래스명 입력')}
       </div>
     </>

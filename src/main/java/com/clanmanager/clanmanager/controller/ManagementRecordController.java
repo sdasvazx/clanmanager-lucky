@@ -34,7 +34,7 @@ public class ManagementRecordController {
     private final ItemRequestRepository itemRequestRepository;
     private final MemberRepository memberRepository;
 
-    private static final List<String> ALL_ITEM_CLANS = List.of("귀신", "운좋은", "귀신Z", "로망");
+    private static final List<String> ALL_ITEM_CLANS = List.of("운좋은");
 
     private static final List<DefaultAllItem> DEFAULT_ALL_ITEMS = List.of(
             new DefaultAllItem("T2", "무기", "오브"),
@@ -537,7 +537,7 @@ public class ManagementRecordController {
     private String requireAllItemClanName(String clanName) {
         String cleaned = cleanRequired(clanName, "클랜을 선택해 주세요.");
         if (!ALL_ITEM_CLANS.contains(cleaned)) {
-            throw new IllegalArgumentException("전체아이템은 귀신/운좋은/귀신Z/로망 클랜별 탭에서만 저장할 수 있습니다.");
+            throw new IllegalArgumentException("전체아이템은 운좋은 클랜에서만 저장할 수 있습니다.");
         }
         return cleaned;
     }

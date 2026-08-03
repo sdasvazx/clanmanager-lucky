@@ -51,7 +51,7 @@ public class DistributionService {
 
     private static final Long VAULT_ID = 1L;
     private static final long ABSENCE_PENALTY_DIAMONDS = 1_000L;
-    private static final List<String> CLAN_ORDER = List.of("귀신", "운좋은", "귀신Z", "로망");
+    private static final List<String> CLAN_ORDER = List.of("운좋은");
 
     private final ParticipationService participationService;
     private final MemberRepository memberRepository;
