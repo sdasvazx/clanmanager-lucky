@@ -1622,7 +1622,7 @@ function Lobby({ member, setPage, favoritePages = [] }) {
     if (memberResult.status === 'fulfilled') setMembers(Array.isArray(memberResult.value) ? memberResult.value : []);
     if (participationResult.status === 'fulfilled') setParticipationSummary(participationResult.value || null);
     if (forumResult.status === 'fulfilled') {
-      setForumNews(Array.isArray(forumResult.value) ? forumResult.value : []);
+      setForumNews(Array.isArray(forumResult.value) ? forumResult.value.slice(0, 5) : []);
       setForumNewsUnavailable(false);
     } else {
       setForumNewsUnavailable(true);
@@ -1647,11 +1647,11 @@ function Lobby({ member, setPage, favoritePages = [] }) {
           const merged = [...validRows, ...current];
           return [...new Map(merged.map((row) => [row.articleId, row])).values()]
             .sort((a, b) => String(b.regDate || '').localeCompare(String(a.regDate || '')))
-            .slice(0, 20);
+            .slice(0, 5);
         });
         setForumNewsUnavailable(false);
       } catch {
-        request('/notice').then((rows) => setForumNews(Array.isArray(rows) ? rows : [])).catch(() => {});
+        request('/notice').then((rows) => setForumNews(Array.isArray(rows) ? rows.slice(0, 5) : [])).catch(() => {});
       }
     };
     eventSource.addEventListener('newNotice', handleNewNotice);
