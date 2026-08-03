@@ -11,9 +11,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 class DiscordSlashCommandServiceTest {
 
     @Test
-    void scheduleContainsAllFourDailyBosses() {
+    void scheduleContainsAllFiveDailyBosses() {
         assertThat(DiscordSlashCommandService.scheduleMessage())
-                .contains("12:00 월드보스", "13:00 게헨나", "20:00 월드보스", "21:00 게헨나");
+                .contains("12:00 월드보스", "13:00 게헨나", "17:00 게헨나", "20:00 월드보스", "21:00 게헨나");
     }
 
     @Test
@@ -43,5 +43,7 @@ class DiscordSlashCommandServiceTest {
     void helpListsNewCommands() {
         assertThat(DiscordSlashCommandService.helpMessage())
                 .contains("/운세", "/뽑기", "/사이트", "/도움말", "/공지", "/공지등록");
+        assertThat(DiscordSlashCommandService.helpMessage())
+                .contains("/노래", "/목록", "/스킵", "/정지", "/나가기");
     }
 }

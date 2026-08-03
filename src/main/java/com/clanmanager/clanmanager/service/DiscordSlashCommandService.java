@@ -5,6 +5,7 @@ import com.clanmanager.clanmanager.repository.WatchLogRepository;
 import lombok.RequiredArgsConstructor;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
+import net.dv8tion.jda.api.entities.channel.middleman.AudioChannel;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.interactions.commands.OptionMapping;
 import org.springframework.stereotype.Component;
@@ -31,6 +32,7 @@ public class DiscordSlashCommandService extends ListenerAdapter {
     private static final List<BossTime> DAILY_BOSSES = List.of(
             new BossTime(LocalTime.of(12, 0), "월드보스"),
             new BossTime(LocalTime.of(13, 0), "게헨나"),
+            new BossTime(LocalTime.of(17, 0), "게헨나"),
             new BossTime(LocalTime.of(20, 0), "월드보스"),
             new BossTime(LocalTime.of(21, 0), "게헨나")
     );
@@ -38,6 +40,7 @@ public class DiscordSlashCommandService extends ListenerAdapter {
     private final WatchLogRepository watchLogRepository;
     private final KoreanFortuneService koreanFortuneService;
     private final DiscordBotNoticeService discordBotNoticeService;
+    private final DiscordMusicService discordMusicService;
     private final SecureRandom secureRandom = new SecureRandom();
 
     @Override
@@ -52,9 +55,43 @@ public class DiscordSlashCommandService extends ListenerAdapter {
             case "사이트" -> event.reply("운좋은 클랜 사이트\n" + CLAN_SITE).queue();
             case "도움말" -> event.reply(helpMessage()).queue();
             case "공지" -> event.reply(discordBotNoticeService.getNotice()).queue();
+            case "노래" -> playSong(event);
+            case "정지" -> event.reply(discordMusicService.stop(event.getGuild())).queue();
+            case "스킵" -> event.reply(discordMusicService.skip(event.getGuild())).queue();
+            case "나가기" -> event.reply(discordMusicService.leave(event.getGuild())).queue();
+            case "목록" -> event.reply(discordMusicService.queueStatus(event.getGuild())).queue();
             case "공지등록" -> updateNotice(event);
             default -> event.reply("지원하지 않는 명령어입니다. `/도움말`을 확인해 주세요.").queue();
         }
+    }
+
+    private void playSong(SlashCommandInteractionEvent event) {
+        if (event.getGuild() == null || event.getMember() == null || event.getMember().getVoiceState() == null) {
+            event.reply("서버 음성 채널에서만 사용할 수 있습니다.").queue();
+            return;
+        }
+        AudioChannel voiceChannel = event.getMember().getVoiceState().getChannel();
+        if (voiceChannel == null) {
+            event.reply("먼저 재생할 음성 채널에 들어가 주세요.").queue();
+            return;
+        }
+        if (!event.getGuild().getSelfMember().hasPermission(voiceChannel, Permission.VOICE_CONNECT, Permission.VOICE_SPEAK)) {
+            event.reply("봇에 해당 음성 채널의 `연결`과 `말하기` 권한을 허용해 주세요.").queue();
+            return;
+        }
+        OptionMapping queryOption = event.getOption("검색어");
+        if (queryOption == null || queryOption.getAsString().isBlank()) {
+            event.reply("검색할 곡명이나 유튜브 주소를 입력해 주세요.").queue();
+            return;
+        }
+
+        event.deferReply().queue(hook -> discordMusicService.play(
+                event.getGuild(),
+                voiceChannel,
+                queryOption.getAsString().trim(),
+                event.getUser().getName(),
+                message -> hook.editOriginal(message).queue()
+        ));
     }
 
     private void replyFortune(SlashCommandInteractionEvent event) {
@@ -133,13 +170,18 @@ public class DiscordSlashCommandService extends ListenerAdapter {
                 `/도움말` 명령어와 사용법 확인
                 `/공지` 현재 클랜 공지 확인
                 `/공지등록 내용:...` 공지 변경(서버 관리자 전용)
+                `/노래 검색어:곡명 또는 유튜브 주소` 음성 채널에서 순서대로 재생
+                `/목록` 현재 곡과 신청 대기열 확인
+                `/스킵` 다음 곡으로 이동
+                `/정지` 재생 중지 및 대기열 비우기
+                `/나가기` 재생 중지 후 음성 채널 나가기
                 `/감시상태` 게임 화면 숫자 감시의 최근 기록 확인
                 `/알림테스트` 봇 연결 상태 확인
                 """;
     }
 
     static String scheduleMessage() {
-        return "**매일 보스 일정**\n12:00 월드보스\n13:00 게헨나\n20:00 월드보스\n21:00 게헨나\n각 일정 5분 전에 자동 알림이 전송됩니다.";
+        return "**매일 보스 일정**\n12:00 월드보스\n13:00 게헨나\n17:00 게헨나\n20:00 월드보스\n21:00 게헨나\n각 일정 5분 전에 자동 알림이 전송됩니다.";
     }
 
     static String nextBossMessage(LocalDateTime now) {
