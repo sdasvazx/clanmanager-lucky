@@ -9,6 +9,7 @@ import com.sedmelluq.discord.lavaplayer.track.AudioPlaylist;
 import com.sedmelluq.discord.lavaplayer.track.AudioTrack;
 import com.sedmelluq.discord.lavaplayer.track.AudioTrackEndReason;
 import com.sedmelluq.discord.lavaplayer.player.event.AudioEventAdapter;
+import com.sedmelluq.discord.lavaplayer.source.soundcloud.SoundCloudAudioSourceManager;
 import dev.lavalink.youtube.YoutubeAudioSourceManager;
 import dev.lavalink.youtube.clients.MusicWithThumbnail;
 import dev.lavalink.youtube.clients.MWebWithThumbnail;
@@ -46,13 +47,18 @@ public class DiscordMusicService {
                 new MWebWithThumbnail(),
                 new WebWithThumbnail()
         ));
+        playerManager.registerSourceManager(SoundCloudAudioSourceManager.createDefault());
     }
 
     public void play(Guild guild, AudioChannel voiceChannel, String query, String requester, Consumer<String> callback) {
         GuildMusicManager musicManager = getMusicManager(guild);
         guild.getAudioManager().openAudioConnection(voiceChannel);
 
-        String identifier = isUrl(query) ? query : "ytsearch:" + query;
+        // Railway data-center IPs are frequently challenged by YouTube even
+        // when metadata search succeeds. Use SoundCloud for ordinary song-name
+        // searches so playback remains reliable; explicit YouTube URLs are
+        // still handled by youtube-source.
+        String identifier = isUrl(query) ? query : "scsearch:" + query;
         playerManager.loadItemOrdered(musicManager, identifier, new AudioLoadResultHandler() {
             @Override
             public void trackLoaded(AudioTrack track) {
