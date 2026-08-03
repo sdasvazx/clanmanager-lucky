@@ -59,7 +59,7 @@ public class DiscordSlashCommandService extends ListenerAdapter {
 
     private void replyFortune(SlashCommandInteractionEvent event) {
         event.deferReply().queue(hook -> {
-            String fortune = koreanFortuneService.getFortune();
+            String fortune = koreanFortuneService.getFortune(event.getUser().getId());
             hook.editOriginal("🔮 **오늘의 운세**\n" + fortune).queue();
         });
     }

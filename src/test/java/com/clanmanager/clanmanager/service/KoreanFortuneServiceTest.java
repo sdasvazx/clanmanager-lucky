@@ -11,17 +11,19 @@ class KoreanFortuneServiceTest {
     private final KoreanFortuneService service = new KoreanFortuneService();
 
     @Test
-    void sameDateAlwaysReturnsSameFourCharacterFortune() {
+    void sameUserAndDateAlwaysReturnsSameFourCharacterFortune() {
         LocalDate date = LocalDate.of(2026, 8, 3);
 
-        assertThat(service.getFortune(date))
-                .isEqualTo(service.getFortune(date))
+        assertThat(service.getFortune(date, "1001"))
+                .isEqualTo(service.getFortune(date, "1001"))
                 .contains("**", "뜻:", "오늘의 흐름:");
     }
 
     @Test
-    void nextDateMovesToAnotherFortune() {
-        assertThat(service.getFortune(LocalDate.of(2026, 8, 3)))
-                .isNotEqualTo(service.getFortune(LocalDate.of(2026, 8, 4)));
+    void differentUsersReceiveDifferentFortunesOnSameDate() {
+        LocalDate date = LocalDate.of(2026, 8, 3);
+
+        assertThat(service.getFortune(date, "1001"))
+                .isNotEqualTo(service.getFortune(date, "1002"));
     }
 }

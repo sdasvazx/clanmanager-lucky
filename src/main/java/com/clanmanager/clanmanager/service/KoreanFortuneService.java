@@ -28,12 +28,14 @@ public class KoreanFortuneService {
             new FourCharacterFortune("동심협력", "同心協力", "마음을 하나로 모아 힘을 합칩니다.", "좋은 사람과 함께하면 기대 이상의 결과를 얻습니다. 도움을 주고받아보세요.")
     );
 
-    public String getFortune() {
-        return getFortune(LocalDate.now(KOREA));
+    public String getFortune(String userId) {
+        return getFortune(LocalDate.now(KOREA), userId);
     }
 
-    String getFortune(LocalDate date) {
-        int index = Math.floorMod(date.toEpochDay(), FORTUNES.size());
+    String getFortune(LocalDate date, String userId) {
+        String safeUserId = userId == null ? "anonymous" : userId;
+        long dailyUserSeed = date.toEpochDay() * 31L + safeUserId.hashCode();
+        int index = Math.floorMod(dailyUserSeed, FORTUNES.size());
         FourCharacterFortune fortune = FORTUNES.get(index);
         return "**%s (%s)**\n뜻: %s\n오늘의 흐름: %s"
                 .formatted(fortune.word(), fortune.hanja(), fortune.meaning(), fortune.reading());
