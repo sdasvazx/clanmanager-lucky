@@ -1,5 +1,9 @@
 # Clan Manager
 
+## 사용설명서
+
+- [운좋은 알림봇 사용설명서](docs/discord-bot-user-guide.md)
+
 게임 클랜의 캐릭터, 공지, 활동 참석을 관리하는 Spring Boot + React 프로젝트입니다.
 
 ## 실행 전 준비
