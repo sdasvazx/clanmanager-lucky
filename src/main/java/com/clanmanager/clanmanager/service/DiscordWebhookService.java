@@ -24,12 +24,14 @@ public class DiscordWebhookService {
     private String webhookUrl;
 
     public void send(String targetId, String oldValue, String newValue, java.time.LocalDateTime changedAt) {
+        sendMessage("[%s] %s → %s (%s)".formatted(targetId, oldValue, newValue, changedAt.format(MESSAGE_TIME)));
+    }
+
+    public void sendMessage(String content) {
         if (webhookUrl == null || webhookUrl.isBlank()) {
             log.warn("Discord webhook URL is not configured; watch alert was stored without Discord delivery.");
             return;
         }
-
-        String content = "[%s] %s → %s (%s)".formatted(targetId, oldValue, newValue, changedAt.format(MESSAGE_TIME));
         try {
             restTemplateBuilder
                     .connectTimeout(Duration.ofSeconds(5))
@@ -38,7 +40,7 @@ public class DiscordWebhookService {
                     .postForEntity(webhookUrl, Map.of("content", content), Void.class);
         } catch (RestClientException exception) {
             // A temporary Discord outage must not discard an already recognized game value.
-            log.error("Failed to deliver Discord watch alert for target {}", targetId, exception);
+            log.error("Failed to deliver Discord webhook message", exception);
         }
     }
 }
