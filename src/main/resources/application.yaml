@@ -25,3 +25,4 @@ watch:
 
 discord:
   webhook-url: ${DISCORD_WEBHOOK_URL:}
+  bot-token: ${DISCORD_BOT_TOKEN:}
