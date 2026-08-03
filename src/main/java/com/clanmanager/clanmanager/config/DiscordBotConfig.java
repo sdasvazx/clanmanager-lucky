@@ -7,6 +7,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
+import net.dv8tion.jda.api.utils.MemberCachePolicy;
+import net.dv8tion.jda.api.utils.cache.CacheFlag;
 import net.dv8tion.jda.api.requests.GatewayIntent;
 import net.dv8tion.jda.api.interactions.commands.OptionType;
 import net.dv8tion.jda.api.interactions.commands.build.CommandData;
@@ -40,6 +42,10 @@ public class DiscordBotConfig {
         try {
             jda = JDABuilder.createLight(botToken)
                     .enableIntents(GatewayIntent.GUILD_VOICE_STATES)
+                    // createLight disables member/voice caches by default. Music commands
+                    // need the invoking member's current voice channel from the gateway cache.
+                    .setMemberCachePolicy(MemberCachePolicy.VOICE)
+                    .enableCache(CacheFlag.VOICE_STATE)
                     .addEventListeners(slashCommandService)
                     .build()
                     .awaitReady();
