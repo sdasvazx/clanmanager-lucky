@@ -6574,10 +6574,10 @@ function InventoryPage({ member }) {
   const [distributionMembers, setDistributionMembers] = useState([]);
   const [rosterMessage, setRosterMessage] = useState('');
   const items = [
-    { id: 'weapon', name: '영무 1티어', icon: '♠' },
-    { id: 'armor', name: '영방 1티어', icon: '⬟' },
-    { id: 'portrait', name: '초상화', icon: '▣' },
-    { id: 'will', name: '유언', icon: '◆' },
+    { id: 'weapon', name: '영무 1티어', shortName: '영무', icon: '⚔️' },
+    { id: 'armor', name: '영방 1티어', shortName: '영방', icon: '🛡️' },
+    { id: 'portrait', name: '초상화', shortName: '초상화', icon: '👤' },
+    { id: 'will', name: '유언', shortName: '유언', icon: '🖋️' },
   ];
   const [activeTab, setActiveTab] = useState('전체 명단');
   const [selectedItem, setSelectedItem] = useState(items[0].id);
@@ -6710,14 +6710,10 @@ function InventoryPage({ member }) {
       </section>
 
       <section className="vault-period-summary" aria-label="회차별 아이템 지급 수량">
-        <div className="vault-period-label">
-          <small>{periodSummary.name}</small>
-          <span>{periodSummary.startDate && periodSummary.endDate ? `${periodSummary.startDate} ~ ${periodSummary.endDate}` : '회차 기간'}</span>
-        </div>
         {items.map((item) => (
           <article key={item.id}>
             <i>{item.icon}</i>
-            <div><small>{item.name.replace(' 1티어', '')}</small><strong>{periodSummary.itemQuantities[item.id] || 0}개</strong></div>
+            <div><small>{item.shortName}</small><strong>{periodSummary.itemQuantities[item.id] || 0}개</strong></div>
           </article>
         ))}
       </section>
@@ -6829,6 +6825,14 @@ function InventoryPage({ member }) {
               </div>
             </section>
           )}
+
+          <section className="vault-distribution-card vault-period-card">
+            <div className="vault-card-heading">
+              <div><span>05</span><h2>회차 기간</h2></div>
+            </div>
+            <strong>{periodSummary.name || '현재 회차'}</strong>
+            <p>{periodSummary.startDate && periodSummary.endDate ? `${periodSummary.startDate} ~ ${periodSummary.endDate}` : '회차 기간을 불러오는 중입니다.'}</p>
+          </section>
         </aside>
       </div>
       <p className="vault-demo-note">지급 확정 내역은 서버와 데이터베이스에 저장됩니다.</p>
