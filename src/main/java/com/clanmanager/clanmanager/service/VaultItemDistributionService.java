@@ -152,4 +152,15 @@ public class VaultItemDistributionService {
         }).toList());
         return dashboard();
     }
+
+    @Transactional
+    public VaultItemDistributionDashboardDto resetHistory(Long adminMemberId) {
+        Member admin = memberRepository.findById(adminMemberId)
+                .orElseThrow(() -> new IllegalArgumentException("운영자 정보를 찾을 수 없습니다."));
+        if (admin.getRole() != MemberRole.ADMIN) {
+            throw new SecurityException("운영자만 지급 내역을 초기화할 수 있습니다.");
+        }
+        repository.deleteAllInBatch();
+        return dashboard();
+    }
 }
