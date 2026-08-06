@@ -6570,18 +6570,9 @@ function PaymentClaimPage({ member }) {
 }
 
 function InventoryPage({ member }) {
-  const distributionMembers = [
-    { id: 1, nickname: '검은바람', weekly: 2, recent: '2026-08-03', status: '지급 완료' },
-    { id: 2, nickname: '달빛기사', weekly: 1, recent: '2026-08-02', status: '지급 완료' },
-    { id: 3, nickname: '붉은여우', weekly: 0, recent: '-', status: '미지급' },
-    { id: 4, nickname: '아르테미스', weekly: 1, recent: '2026-08-01', status: '지급 완료' },
-    { id: 5, nickname: '천둥신', weekly: 0, recent: '-', status: '미지급' },
-    { id: 6, nickname: '화이트드래곤', weekly: 2, recent: '2026-08-03', status: '지급 완료' },
-    { id: 7, nickname: '별하늘', weekly: 1, recent: '2026-07-31', status: '지급 완료' },
-    { id: 8, nickname: '사신의춤', weekly: 0, recent: '-', status: '미지급' },
-    { id: 9, nickname: '푸른바다', weekly: 1, recent: '2026-07-30', status: '지급 완료' },
-    { id: 10, nickname: '무적의손', weekly: 1, recent: '2026-07-29', status: '지급 완료' },
-  ];
+  const canEdit = member?.role === 'ADMIN';
+  const [distributionMembers, setDistributionMembers] = useState([]);
+  const [rosterMessage, setRosterMessage] = useState('');
   const items = [
     { id: 'weapon', name: '영무 1티어', icon: '♠' },
     { id: 'armor', name: '영방 1티어', icon: '⬟' },
@@ -6593,6 +6584,25 @@ function InventoryPage({ member }) {
   const [checkedIds, setCheckedIds] = useState(new Set());
   const [appliedMembers, setAppliedMembers] = useState([]);
   const [search, setSearch] = useState('');
+
+  useEffect(() => {
+    request('/members')
+      .then((rows) => {
+        const activeRows = (Array.isArray(rows) ? rows : [])
+          .filter((row) => row.active !== false)
+          .sort((a, b) => String(a.characterName || '').localeCompare(String(b.characterName || ''), 'ko'))
+          .map((row) => ({
+            id: row.memberId,
+            nickname: row.characterName,
+            weekly: 0,
+            recent: '-',
+            status: '미지급',
+          }));
+        setDistributionMembers(activeRows);
+        setRosterMessage('');
+      })
+      .catch((error) => setRosterMessage(error.message));
+  }, []);
 
   const visibleMembers = activeTab === '지급 완료'
     ? distributionMembers.filter((row) => row.status === '지급 완료')
@@ -6607,6 +6617,7 @@ function InventoryPage({ member }) {
     setQuantity(Number.isFinite(parsed) ? Math.max(1, parsed) : 1);
   };
   const toggleMember = (id) => {
+    if (!canEdit) return;
     setCheckedIds((current) => {
       const next = new Set(current);
       if (next.has(id)) next.delete(id);
@@ -6615,6 +6626,7 @@ function InventoryPage({ member }) {
     });
   };
   const toggleAllVisible = () => {
+    if (!canEdit) return;
     setCheckedIds((current) => {
       const next = new Set(current);
       if (allVisibleChecked) visibleIds.forEach((id) => next.delete(id));
@@ -6623,6 +6635,7 @@ function InventoryPage({ member }) {
     });
   };
   const applySelectedMembers = () => {
+    if (!canEdit) return;
     const names = distributionMembers
       .filter((row) => checkedIds.has(row.id))
       .map((row) => row.nickname);
@@ -6634,13 +6647,13 @@ function InventoryPage({ member }) {
         <div>
           <span className="vault-distribution-kicker">CLAN VAULT</span>
           <h1>금고분배현황</h1>
-          <p>클랜 금고 아이템을 선택하고 지급 대상을 간편하게 구성합니다.</p>
+          <p>{canEdit ? '클랜 금고 아이템을 선택하고 지급 대상을 간편하게 구성합니다.' : '클랜원은 금고 분배 현황을 열람할 수 있습니다. 수정은 운영자만 가능합니다.'}</p>
         </div>
         <div className="vault-distribution-hero-mark">운좋은</div>
       </header>
 
       <section className="vault-distribution-stats" aria-label="금고 분배 요약">
-        <article><span>♙</span><div><small>활성 클랜원</small><strong>24</strong></div></article>
+        <article><span>♙</span><div><small>활성 클랜원</small><strong>{distributionMembers.length}</strong></div></article>
         <article><span>▤</span><div><small>이번 주 지급</small><strong>18건</strong></div></article>
         <article><span>♧</span><div><small>미지급 인원</small><strong>3명</strong></div></article>
         <article><span>□</span><div><small>오늘 분배 수량</small><strong>6개</strong></div></article>
@@ -6650,7 +6663,7 @@ function InventoryPage({ member }) {
         <section className="vault-distribution-card vault-distribution-roster">
           <div className="vault-card-heading">
             <div><span>01</span><h2>분배 대상</h2></div>
-            <small>{checkedIds.size}명 선택</small>
+            <small>{canEdit ? `${checkedIds.size}명 선택` : '열람 전용'}</small>
           </div>
           <div className="vault-distribution-tabs" role="tablist">
             {['전체 명단', '지급 완료'].map((tab) => (
@@ -6667,12 +6680,12 @@ function InventoryPage({ member }) {
           <div className="vault-distribution-table-wrap">
             <table className="vault-distribution-table">
               <thead><tr>
-                <th><input type="checkbox" aria-label="현재 명단 전체 선택" checked={allVisibleChecked} onChange={toggleAllVisible} /></th>
+                <th><input type="checkbox" aria-label="현재 명단 전체 선택" checked={allVisibleChecked} onChange={toggleAllVisible} disabled={!canEdit} /></th>
                 <th>닉네임</th><th>이번 주 지급 수량</th><th>최근 지급일</th><th>상태</th>
               </tr></thead>
               <tbody>{visibleMembers.map((row) => (
                 <tr key={row.id} className={checkedIds.has(row.id) ? 'selected' : ''}>
-                  <td><input type="checkbox" aria-label={`${row.nickname} 선택`} checked={checkedIds.has(row.id)} onChange={() => toggleMember(row.id)} /></td>
+                  <td><input type="checkbox" aria-label={`${row.nickname} 선택`} checked={checkedIds.has(row.id)} onChange={() => toggleMember(row.id)} disabled={!canEdit} /></td>
                   <td><b>{row.nickname}</b></td>
                   <td>{row.weekly}개</td>
                   <td>{row.recent}</td>
@@ -6681,6 +6694,8 @@ function InventoryPage({ member }) {
               ))}</tbody>
             </table>
           </div>
+          {rosterMessage && <div className="empty-state">{rosterMessage}</div>}
+          {!rosterMessage && !distributionMembers.length && <div className="empty-state">등록된 클랜원이 없습니다.</div>}
         </section>
 
         <aside className="vault-distribution-side">
@@ -6688,20 +6703,22 @@ function InventoryPage({ member }) {
             <div className="vault-card-heading"><div><span>02</span><h2>분배 아이템</h2></div></div>
             <div className="vault-item-grid">
               {items.map((item) => (
-                <button type="button" key={item.id} className={selectedItem === item.id ? 'active' : ''} onClick={() => setSelectedItem(item.id)}>
+                <button type="button" key={item.id} className={selectedItem === item.id ? 'active' : ''} onClick={() => setSelectedItem(item.id)} disabled={!canEdit}>
                   <i>{item.icon}</i><b>{item.name}</b>
                 </button>
               ))}
             </div>
             <label className="vault-quantity-label">분배 수량</label>
             <div className="vault-quantity-control">
-              <button type="button" aria-label="수량 줄이기" onClick={() => changeQuantity(quantity - 1)}>−</button>
-              <input type="number" min="1" value={quantity} aria-label="분배 수량" onChange={(event) => changeQuantity(event.target.value)} />
-              <button type="button" aria-label="수량 늘리기" onClick={() => changeQuantity(quantity + 1)}>+</button>
+              <button type="button" aria-label="수량 줄이기" onClick={() => changeQuantity(quantity - 1)} disabled={!canEdit}>−</button>
+              <input type="number" min="1" value={quantity} aria-label="분배 수량" onChange={(event) => changeQuantity(event.target.value)} disabled={!canEdit} />
+              <button type="button" aria-label="수량 늘리기" onClick={() => changeQuantity(quantity + 1)} disabled={!canEdit}>+</button>
             </div>
-            <button type="button" className="vault-apply-button" onClick={applySelectedMembers} disabled={!checkedIds.size}>
-              전체 선택 <span>›</span> 인원 적용
-            </button>
+            {canEdit ? (
+              <button type="button" className="vault-apply-button" onClick={applySelectedMembers} disabled={!checkedIds.size}>
+                전체 선택 <span>›</span> 인원 적용
+              </button>
+            ) : <p className="vault-readonly-message">클랜원 계정은 열람만 가능합니다.</p>}
           </section>
 
           <section className="vault-distribution-card vault-applied-card">
@@ -6712,7 +6729,7 @@ function InventoryPage({ member }) {
             <div className="vault-member-search"><span>⌕</span><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="이름 검색" /></div>
             <div className="vault-member-tags">
               {filteredAppliedMembers.map((name) => (
-                <span key={name}>{name}<button type="button" aria-label={`${name} 제거`} onClick={() => setAppliedMembers((current) => current.filter((memberName) => memberName !== name))}>×</button></span>
+                <span key={name}>{name}{canEdit && <button type="button" aria-label={`${name} 제거`} onClick={() => setAppliedMembers((current) => current.filter((memberName) => memberName !== name))}>×</button>}</span>
               ))}
               {!filteredAppliedMembers.length && <p>{appliedMembers.length ? '검색 결과가 없습니다.' : '명단에서 인원을 선택한 후 적용해 주세요.'}</p>}
             </div>
