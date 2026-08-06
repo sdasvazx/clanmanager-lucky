@@ -16,7 +16,9 @@ import dev.lavalink.youtube.clients.MWebWithThumbnail;
 import dev.lavalink.youtube.clients.TvHtml5SimplyWithThumbnail;
 import dev.lavalink.youtube.clients.WebWithThumbnail;
 import jakarta.annotation.PreDestroy;
+import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.entities.channel.middleman.AudioChannel;
 import org.springframework.stereotype.Service;
 
@@ -50,7 +52,8 @@ public class DiscordMusicService {
         playerManager.registerSourceManager(SoundCloudAudioSourceManager.createDefault());
     }
 
-    public void play(Guild guild, AudioChannel voiceChannel, String query, String requester, Consumer<String> callback) {
+    public void play(Guild guild, AudioChannel voiceChannel, String query, String requester,
+                     Consumer<String> callback, Consumer<MessageEmbed> embedCallback) {
         GuildMusicManager musicManager = getMusicManager(guild);
         guild.getAudioManager().openAudioConnection(voiceChannel);
 
@@ -62,7 +65,7 @@ public class DiscordMusicService {
         playerManager.loadItemOrdered(musicManager, identifier, new AudioLoadResultHandler() {
             @Override
             public void trackLoaded(AudioTrack track) {
-                enqueue(track, requester, musicManager, callback);
+                enqueue(track, requester, musicManager, embedCallback);
             }
 
             @Override
@@ -75,7 +78,7 @@ public class DiscordMusicService {
                     callback.accept("검색 결과가 없습니다.");
                     return;
                 }
-                enqueue(track, requester, musicManager, callback);
+                enqueue(track, requester, musicManager, embedCallback);
             }
 
             @Override
@@ -146,15 +149,44 @@ public class DiscordMusicService {
         return message.toString().trim();
     }
 
-    private void enqueue(AudioTrack track, String requester, GuildMusicManager manager, Consumer<String> callback) {
+    private void enqueue(AudioTrack track, String requester, GuildMusicManager manager,
+                         Consumer<MessageEmbed> embedCallback) {
         track.setUserData(requester);
         int position = manager.scheduler.enqueue(track);
-        if (position == 0) {
-            callback.accept("▶️ 지금 재생합니다: **%s** · %s".formatted(track.getInfo().title, track.getInfo().author));
+        embedCallback.accept(buildNowPlayingEmbed(track, requester, position));
+    }
+
+    private MessageEmbed buildNowPlayingEmbed(AudioTrack track, String requester, int position) {
+        var info = track.getInfo();
+        EmbedBuilder embed = new EmbedBuilder()
+                .setColor(0x5865F2)
+                .setTitle(position == 0 ? "지금 재생" : "대기열에 추가됨");
+
+        if (info.uri == null || info.uri.isBlank()) {
+            embed.setDescription("🎵 **%s**\n%s".formatted(info.title, info.author));
         } else {
-            callback.accept("✅ 신청곡을 대기열 %d번에 추가했습니다: **%s** · %s"
-                    .formatted(position, track.getInfo().title, track.getInfo().author));
+            embed.setDescription("🎵 **[%s](%s)**\n%s".formatted(info.title, info.uri, info.author));
+            embed.addField("음원", "[링크 열기](%s)".formatted(info.uri), true);
         }
+
+        if (info.artworkUrl != null && !info.artworkUrl.isBlank()) {
+            embed.setThumbnail(info.artworkUrl);
+        }
+
+        embed.addField("곡 길이", info.isStream ? "LIVE" : formatDuration(info.length), true);
+        embed.addField("대기열", position == 0 ? "바로 재생" : position + "번째 대기", true);
+        embed.setFooter("신청: " + requester);
+        return embed.build();
+    }
+
+    private String formatDuration(long millis) {
+        long totalSeconds = millis / 1000;
+        long hours = totalSeconds / 3600;
+        long minutes = (totalSeconds % 3600) / 60;
+        long seconds = totalSeconds % 60;
+        return hours > 0
+                ? "%d:%02d:%02d".formatted(hours, minutes, seconds)
+                : "%d:%02d".formatted(minutes, seconds);
     }
 
     private GuildMusicManager getMusicManager(Guild guild) {

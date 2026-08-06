@@ -90,7 +90,8 @@ public class DiscordSlashCommandService extends ListenerAdapter {
                 voiceChannel,
                 queryOption.getAsString().trim(),
                 event.getUser().getName(),
-                message -> hook.editOriginal(message).queue()
+                message -> hook.editOriginal(message).queue(),
+                embed -> hook.editOriginalEmbeds(embed).queue()
         ));
     }
 
