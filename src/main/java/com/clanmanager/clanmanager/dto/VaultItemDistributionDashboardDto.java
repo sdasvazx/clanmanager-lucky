@@ -14,6 +14,7 @@ public class VaultItemDistributionDashboardDto {
     private int unpaidMemberCount;
     private int todayQuantity;
     private List<MemberRow> members;
+    private List<HistoryRow> history;
 
     @Data
     @Builder
@@ -23,5 +24,16 @@ public class VaultItemDistributionDashboardDto {
         private int weeklyQuantity;
         private LocalDateTime recentDistributedAt;
         private String status;
+    }
+
+    @Data
+    @Builder
+    public static class HistoryRow {
+        private Long distributionId;
+        private LocalDateTime distributedAt;
+        private String distributedByName;
+        private String memberName;
+        private String itemName;
+        private int quantity;
     }
 }
