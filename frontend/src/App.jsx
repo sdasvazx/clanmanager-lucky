@@ -30,7 +30,7 @@ const menu = [
   ['payment', '분', '분배금 조회'],
   ['ledger', '통', '통장현황'],
   ['book', '장', '장부 조회'],
-  ['inventory', '재', '재고현황'],
+  ['inventory', '금', '금고분배현황'],
   ['bidding', '아', '아이템입찰'],
   ['collection', '컬', '컬렉템 지급현황'],
   ['mypage', '마', '마이페이지'],
@@ -6570,57 +6570,157 @@ function PaymentClaimPage({ member }) {
 }
 
 function InventoryPage({ member }) {
-  const [rows, setRows] = useState([]);
-  const [form, setForm] = useState({
-    itemName: '',
-    quantity: 1,
-    location: '클랜창고',
-    memo: '',
-  });
-  const canManage = member.role === 'ADMIN';
-  const load = () =>
-    request('/management/inventory')
-      .then(setRows)
-      .catch(() => {});
-  useEffect(() => {
-    load();
-  }, []);
-  const add = async (event) => {
-    event.preventDefault();
-    await request('/management/inventory', {
-      method: 'POST',
-      body: JSON.stringify({
-        ...form,
-        quantity: Number(form.quantity || 0),
-        adminMemberId: member.memberId,
-      }),
+  const distributionMembers = [
+    { id: 1, nickname: '검은바람', weekly: 2, recent: '2026-08-03', status: '지급 완료' },
+    { id: 2, nickname: '달빛기사', weekly: 1, recent: '2026-08-02', status: '지급 완료' },
+    { id: 3, nickname: '붉은여우', weekly: 0, recent: '-', status: '미지급' },
+    { id: 4, nickname: '아르테미스', weekly: 1, recent: '2026-08-01', status: '지급 완료' },
+    { id: 5, nickname: '천둥신', weekly: 0, recent: '-', status: '미지급' },
+    { id: 6, nickname: '화이트드래곤', weekly: 2, recent: '2026-08-03', status: '지급 완료' },
+    { id: 7, nickname: '별하늘', weekly: 1, recent: '2026-07-31', status: '지급 완료' },
+    { id: 8, nickname: '사신의춤', weekly: 0, recent: '-', status: '미지급' },
+    { id: 9, nickname: '푸른바다', weekly: 1, recent: '2026-07-30', status: '지급 완료' },
+    { id: 10, nickname: '무적의손', weekly: 1, recent: '2026-07-29', status: '지급 완료' },
+  ];
+  const items = [
+    { id: 'weapon', name: '영무 1티어', icon: '♠' },
+    { id: 'armor', name: '영방 1티어', icon: '⬟' },
+    { id: 'portrait', name: '초상화', icon: '▣' },
+  ];
+  const [activeTab, setActiveTab] = useState('전체 명단');
+  const [selectedItem, setSelectedItem] = useState(items[0].id);
+  const [quantity, setQuantity] = useState(1);
+  const [checkedIds, setCheckedIds] = useState(new Set());
+  const [appliedMembers, setAppliedMembers] = useState([]);
+  const [search, setSearch] = useState('');
+
+  const visibleMembers = activeTab === '지급 완료'
+    ? distributionMembers.filter((row) => row.status === '지급 완료')
+    : distributionMembers;
+  const filteredAppliedMembers = appliedMembers.filter((name) =>
+    name.toLowerCase().includes(search.trim().toLowerCase()));
+  const visibleIds = visibleMembers.map((row) => row.id);
+  const allVisibleChecked = visibleIds.length > 0 && visibleIds.every((id) => checkedIds.has(id));
+
+  const changeQuantity = (nextValue) => {
+    const parsed = Number.parseInt(nextValue, 10);
+    setQuantity(Number.isFinite(parsed) ? Math.max(1, parsed) : 1);
+  };
+  const toggleMember = (id) => {
+    setCheckedIds((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
     });
-    setForm({ itemName: '', quantity: 1, location: '클랜창고', memo: '' });
-    await load();
+  };
+  const toggleAllVisible = () => {
+    setCheckedIds((current) => {
+      const next = new Set(current);
+      if (allVisibleChecked) visibleIds.forEach((id) => next.delete(id));
+      else visibleIds.forEach((id) => next.add(id));
+      return next;
+    });
+  };
+  const applySelectedMembers = () => {
+    const names = distributionMembers
+      .filter((row) => checkedIds.has(row.id))
+      .map((row) => row.nickname);
+    setAppliedMembers(names);
   };
   return (
-    <CrudPage
-      title="재고현황"
-      description="클랜 보유 아이템과 수량을 조회합니다."
-      canManage={canManage}
-      form={
-        <form className="record-form" onSubmit={add}>
-          <input required placeholder="아이템명" value={form.itemName} onChange={(e) => setForm({ ...form, itemName: e.target.value })} />
-          <input required type="number" min="0" value={form.quantity} onChange={(e) => setForm({ ...form, quantity: e.target.value })} />
-          <input placeholder="보관 위치" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} />
-          <input placeholder="메모" value={form.memo} onChange={(e) => setForm({ ...form, memo: e.target.value })} />
-          <button className="primary-button">추가</button>
-        </form>
-      }
-      rows={rows}
-      getId={(row) => row.inventoryItemId}
-      columns={['아이템', '수량', '위치', '메모', '등록일']}
-      render={(row) => [row.itemName, formatNumber(row.quantity), row.location || '-', row.memo || '-', new Date(row.createdAt).toLocaleDateString('ko-KR')]}
-      onDelete={async (id) => {
-        await request(`/management/inventory/${id}?adminMemberId=${member.memberId}`, { method: 'DELETE' });
-        await load();
-      }}
-    />
+    <div className="vault-distribution-page">
+      <header className="vault-distribution-hero">
+        <div>
+          <span className="vault-distribution-kicker">CLAN VAULT</span>
+          <h1>금고분배현황</h1>
+          <p>클랜 금고 아이템을 선택하고 지급 대상을 간편하게 구성합니다.</p>
+        </div>
+        <div className="vault-distribution-hero-mark">운좋은</div>
+      </header>
+
+      <section className="vault-distribution-stats" aria-label="금고 분배 요약">
+        <article><span>♙</span><div><small>활성 클랜원</small><strong>24</strong></div></article>
+        <article><span>▤</span><div><small>이번 주 지급</small><strong>18건</strong></div></article>
+        <article><span>♧</span><div><small>미지급 인원</small><strong>3명</strong></div></article>
+        <article><span>□</span><div><small>오늘 분배 수량</small><strong>6개</strong></div></article>
+      </section>
+
+      <div className="vault-distribution-layout">
+        <section className="vault-distribution-card vault-distribution-roster">
+          <div className="vault-card-heading">
+            <div><span>01</span><h2>분배 대상</h2></div>
+            <small>{checkedIds.size}명 선택</small>
+          </div>
+          <div className="vault-distribution-tabs" role="tablist">
+            {['전체 명단', '지급 완료'].map((tab) => (
+              <button
+                type="button"
+                role="tab"
+                aria-selected={activeTab === tab}
+                className={activeTab === tab ? 'active' : ''}
+                onClick={() => setActiveTab(tab)}
+                key={tab}
+              >{tab}</button>
+            ))}
+          </div>
+          <div className="vault-distribution-table-wrap">
+            <table className="vault-distribution-table">
+              <thead><tr>
+                <th><input type="checkbox" aria-label="현재 명단 전체 선택" checked={allVisibleChecked} onChange={toggleAllVisible} /></th>
+                <th>닉네임</th><th>이번 주 지급 수량</th><th>최근 지급일</th><th>상태</th>
+              </tr></thead>
+              <tbody>{visibleMembers.map((row) => (
+                <tr key={row.id} className={checkedIds.has(row.id) ? 'selected' : ''}>
+                  <td><input type="checkbox" aria-label={`${row.nickname} 선택`} checked={checkedIds.has(row.id)} onChange={() => toggleMember(row.id)} /></td>
+                  <td><b>{row.nickname}</b></td>
+                  <td>{row.weekly}개</td>
+                  <td>{row.recent}</td>
+                  <td><span className={`vault-status ${row.status === '지급 완료' ? 'complete' : 'pending'}`}>{row.status}</span></td>
+                </tr>
+              ))}</tbody>
+            </table>
+          </div>
+        </section>
+
+        <aside className="vault-distribution-side">
+          <section className="vault-distribution-card">
+            <div className="vault-card-heading"><div><span>02</span><h2>분배 아이템</h2></div></div>
+            <div className="vault-item-grid">
+              {items.map((item) => (
+                <button type="button" key={item.id} className={selectedItem === item.id ? 'active' : ''} onClick={() => setSelectedItem(item.id)}>
+                  <i>{item.icon}</i><b>{item.name}</b>
+                </button>
+              ))}
+            </div>
+            <label className="vault-quantity-label">분배 수량</label>
+            <div className="vault-quantity-control">
+              <button type="button" aria-label="수량 줄이기" onClick={() => changeQuantity(quantity - 1)}>−</button>
+              <input type="number" min="1" value={quantity} aria-label="분배 수량" onChange={(event) => changeQuantity(event.target.value)} />
+              <button type="button" aria-label="수량 늘리기" onClick={() => changeQuantity(quantity + 1)}>+</button>
+            </div>
+            <button type="button" className="vault-apply-button" onClick={applySelectedMembers} disabled={!checkedIds.size}>
+              전체 선택 <span>›</span> 인원 적용
+            </button>
+          </section>
+
+          <section className="vault-distribution-card vault-applied-card">
+            <div className="vault-card-heading">
+              <div><span>03</span><h2>적용된 인원</h2></div>
+              <small>{appliedMembers.length}명</small>
+            </div>
+            <div className="vault-member-search"><span>⌕</span><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="이름 검색" /></div>
+            <div className="vault-member-tags">
+              {filteredAppliedMembers.map((name) => (
+                <span key={name}>{name}<button type="button" aria-label={`${name} 제거`} onClick={() => setAppliedMembers((current) => current.filter((memberName) => memberName !== name))}>×</button></span>
+              ))}
+              {!filteredAppliedMembers.length && <p>{appliedMembers.length ? '검색 결과가 없습니다.' : '명단에서 인원을 선택한 후 적용해 주세요.'}</p>}
+            </div>
+          </section>
+        </aside>
+      </div>
+      <p className="vault-demo-note">화면 동작 예시이며 서버와 데이터베이스에는 저장되지 않습니다.</p>
+    </div>
   );
 }
 
