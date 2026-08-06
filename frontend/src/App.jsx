@@ -6577,6 +6577,7 @@ function InventoryPage({ member }) {
     { id: 'weapon', name: '영무 1티어', icon: '♠' },
     { id: 'armor', name: '영방 1티어', icon: '⬟' },
     { id: 'portrait', name: '초상화', icon: '▣' },
+    { id: 'will', name: '유언', icon: '◆' },
   ];
   const [activeTab, setActiveTab] = useState('전체 명단');
   const [selectedItem, setSelectedItem] = useState(items[0].id);
@@ -6590,12 +6591,14 @@ function InventoryPage({ member }) {
   const [paymentMessage, setPaymentMessage] = useState('');
   const [distributionHistory, setDistributionHistory] = useState([]);
   const [showDistributionHistory, setShowDistributionHistory] = useState(false);
+  const [periodSummary, setPeriodSummary] = useState({ name: '', startDate: '', endDate: '', itemQuantities: {} });
 
   const applyDashboard = (data) => {
     const rows = (Array.isArray(data?.members) ? data.members : []).map((row) => ({
       id: row.memberId,
       nickname: row.characterName,
       weekly: row.weeklyQuantity || 0,
+      distributedItems: row.distributedItems || '-',
       recent: row.recentDistributedAt ? new Date(row.recentDistributedAt).toLocaleDateString('ko-KR') : '-',
       status: row.status || '미지급',
     }));
@@ -6607,6 +6610,12 @@ function InventoryPage({ member }) {
       todayQuantity: data?.todayQuantity || 0,
     });
     setDistributionHistory(Array.isArray(data?.history) ? data.history : []);
+    setPeriodSummary({
+      name: data?.periodName || '현재 회차',
+      startDate: data?.periodStartDate || '',
+      endDate: data?.periodEndDate || '',
+      itemQuantities: data?.itemQuantities || {},
+    });
   };
 
   useEffect(() => {
@@ -6695,9 +6704,22 @@ function InventoryPage({ member }) {
 
       <section className="vault-distribution-stats" aria-label="금고 분배 요약">
         <article><span>♙</span><div><small>활성 클랜원</small><strong>{dashboardStats.activeMemberCount}명</strong></div></article>
-        <article><span>▤</span><div><small>이번 주 지급</small><strong>{dashboardStats.weeklyGrantCount}건</strong></div></article>
+        <article><span>▤</span><div><small>현재 회차 지급</small><strong>{dashboardStats.weeklyGrantCount}건</strong></div></article>
         <article><span>♧</span><div><small>미지급 인원</small><strong>{dashboardStats.unpaidMemberCount}명</strong></div></article>
         <article><span>□</span><div><small>오늘 분배 수량</small><strong>{dashboardStats.todayQuantity}개</strong></div></article>
+      </section>
+
+      <section className="vault-period-summary" aria-label="회차별 아이템 지급 수량">
+        <div className="vault-period-label">
+          <small>{periodSummary.name}</small>
+          <span>{periodSummary.startDate && periodSummary.endDate ? `${periodSummary.startDate} ~ ${periodSummary.endDate}` : '회차 기간'}</span>
+        </div>
+        {items.map((item) => (
+          <article key={item.id}>
+            <i>{item.icon}</i>
+            <div><small>{item.name.replace(' 1티어', '')}</small><strong>{periodSummary.itemQuantities[item.id] || 0}개</strong></div>
+          </article>
+        ))}
       </section>
 
       <div className="vault-distribution-layout">
@@ -6722,13 +6744,13 @@ function InventoryPage({ member }) {
             <table className="vault-distribution-table">
               <thead><tr>
                 <th><input type="checkbox" aria-label="현재 명단 전체 선택" checked={allVisibleChecked} onChange={toggleAllVisible} disabled={!canEdit} /></th>
-                <th>닉네임</th><th>이번 주 지급 수량</th><th>최근 지급일</th><th>상태</th>
+                <th>닉네임</th><th>지급 수량</th><th>최근 지급일</th><th>상태</th>
               </tr></thead>
               <tbody>{visibleMembers.map((row) => (
                 <tr key={row.id} className={checkedIds.has(row.id) ? 'selected' : ''}>
                   <td><input type="checkbox" aria-label={`${row.nickname} 선택`} checked={checkedIds.has(row.id)} onChange={() => toggleMember(row.id)} disabled={!canEdit} /></td>
                   <td><b>{row.nickname}</b></td>
-                  <td>{row.weekly}개</td>
+                  <td><span className="vault-member-items">{row.distributedItems}</span></td>
                   <td>{row.recent}</td>
                   <td><span className={`vault-status ${row.status === '지급 완료' ? 'complete' : 'pending'}`}>{row.status}</span></td>
                 </tr>
