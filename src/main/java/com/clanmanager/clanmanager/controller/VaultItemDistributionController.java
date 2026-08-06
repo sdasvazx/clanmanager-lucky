@@ -21,4 +21,9 @@ public class VaultItemDistributionController {
     public VaultItemDistributionDashboardDto distribute(@RequestBody VaultItemDistributionRequestDto request) {
         return service.distribute(request);
     }
+
+    @DeleteMapping
+    public VaultItemDistributionDashboardDto resetHistory(@RequestParam Long adminMemberId) {
+        return service.resetHistory(adminMemberId);
+    }
 }
