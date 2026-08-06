@@ -6591,6 +6591,7 @@ function InventoryPage({ member }) {
   const [paymentMessage, setPaymentMessage] = useState('');
   const [distributionHistory, setDistributionHistory] = useState([]);
   const [showDistributionHistory, setShowDistributionHistory] = useState(false);
+  const [historyItemId, setHistoryItemId] = useState(null);
   const [periodSummary, setPeriodSummary] = useState({ name: '', startDate: '', endDate: '', itemQuantities: {} });
 
   const applyDashboard = (data) => {
@@ -6634,6 +6635,10 @@ function InventoryPage({ member }) {
     name.toLowerCase().includes(search.trim().toLowerCase()));
   const visibleIds = visibleMembers.map((row) => row.id);
   const allVisibleChecked = visibleIds.length > 0 && visibleIds.every((id) => checkedIds.has(id));
+  const historyItem = items.find((item) => item.id === historyItemId);
+  const itemHistoryRows = historyItem
+    ? distributionHistory.filter((row) => row.itemName === historyItem.name)
+    : [];
 
   const changeQuantity = (nextValue) => {
     const parsed = Number.parseInt(nextValue, 10);
@@ -6711,12 +6716,45 @@ function InventoryPage({ member }) {
 
       <section className="vault-period-summary" aria-label="회차별 아이템 지급 수량">
         {items.map((item) => (
-          <article key={item.id}>
-            <i>{item.icon}</i>
+          <article key={item.id} className={historyItemId === item.id ? 'history-open' : ''}>
+            <button
+              type="button"
+              className="vault-summary-history-button"
+              aria-label={`${item.shortName} 지급 내역 ${historyItemId === item.id ? '닫기' : '보기'}`}
+              aria-expanded={historyItemId === item.id}
+              onClick={() => setHistoryItemId((current) => current === item.id ? null : item.id)}
+            >
+              <i>{item.icon}</i>
+            </button>
             <div><small>{item.shortName}</small><strong>{periodSummary.itemQuantities[item.id] || 0}개</strong></div>
           </article>
         ))}
       </section>
+
+      {historyItem && (
+        <section className="vault-distribution-card vault-item-history-panel">
+          <div className="vault-item-history-heading">
+            <div><i>{historyItem.icon}</i><strong>{historyItem.shortName} 지급 내역</strong></div>
+            <button type="button" aria-label="아이템 지급 내역 닫기" onClick={() => setHistoryItemId(null)}>×</button>
+          </div>
+          <div className="vault-item-history-table-wrap">
+            <table className="vault-item-history-table">
+              <thead><tr><th>지급 일시</th><th>지급자</th><th>받은 사람</th><th>수량</th></tr></thead>
+              <tbody>
+                {itemHistoryRows.map((row) => (
+                  <tr key={row.distributionId}>
+                    <td>{row.distributedAt ? new Date(row.distributedAt).toLocaleString('ko-KR') : '-'}</td>
+                    <td>{row.distributedByName || '-'}</td>
+                    <td><strong>{row.memberName || '-'}</strong></td>
+                    <td><b>{row.quantity || 0}개</b></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {!itemHistoryRows.length && <div className="empty-state">아직 {historyItem.shortName} 지급 내역이 없습니다.</div>}
+        </section>
+      )}
 
       <div className="vault-distribution-layout">
         <section className="vault-distribution-card vault-distribution-roster">
