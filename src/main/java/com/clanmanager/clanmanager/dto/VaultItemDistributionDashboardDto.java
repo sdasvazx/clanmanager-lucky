@@ -4,7 +4,9 @@ import lombok.Builder;
 import lombok.Data;
 
 import java.time.LocalDateTime;
+import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 @Data
 @Builder
@@ -13,6 +15,11 @@ public class VaultItemDistributionDashboardDto {
     private int weeklyGrantCount;
     private int unpaidMemberCount;
     private int todayQuantity;
+    private Long periodId;
+    private String periodName;
+    private LocalDate periodStartDate;
+    private LocalDate periodEndDate;
+    private Map<String, Integer> itemQuantities;
     private List<MemberRow> members;
     private List<HistoryRow> history;
 
@@ -22,6 +29,7 @@ public class VaultItemDistributionDashboardDto {
         private Long memberId;
         private String characterName;
         private int weeklyQuantity;
+        private String distributedItems;
         private LocalDateTime recentDistributedAt;
         private String status;
     }
