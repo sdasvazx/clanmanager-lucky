@@ -35,6 +35,11 @@ public class VaultItemDistribution {
     @Column(nullable = false)
     private Long distributedByMemberId;
 
+    private Long periodId;
+
+    @Column(length = 100)
+    private String periodName;
+
     @Column(nullable = false)
     private LocalDateTime distributedAt;
 }
