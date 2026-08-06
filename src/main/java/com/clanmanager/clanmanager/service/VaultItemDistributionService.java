@@ -39,6 +39,11 @@ public class VaultItemDistributionService {
                 .sorted(Comparator.comparing(Member::getCharacterName, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER)))
                 .toList();
         List<VaultItemDistribution> all = repository.findAll();
+        Map<Long, String> memberNames = memberRepository.findAll().stream().collect(Collectors.toMap(
+                Member::getMemberId,
+                Member::getCharacterName,
+                (left, right) -> left
+        ));
         List<VaultItemDistribution> weekly = all.stream().filter(row -> !row.getDistributedAt().isBefore(weekStart)).toList();
         Map<Long, Integer> weeklyQuantity = weekly.stream().collect(Collectors.groupingBy(
                 VaultItemDistribution::getMemberId,
@@ -63,12 +68,25 @@ public class VaultItemDistributionService {
                 .filter(row -> !row.getDistributedAt().isBefore(todayStart))
                 .mapToInt(VaultItemDistribution::getQuantity)
                 .sum();
+        List<VaultItemDistributionDashboardDto.HistoryRow> history = all.stream()
+                .sorted(Comparator.comparing(VaultItemDistribution::getDistributedAt).reversed())
+                .limit(100)
+                .map(row -> VaultItemDistributionDashboardDto.HistoryRow.builder()
+                        .distributionId(row.getDistributionId())
+                        .distributedAt(row.getDistributedAt())
+                        .distributedByName(memberNames.getOrDefault(row.getDistributedByMemberId(), "탈퇴한 운영자"))
+                        .memberName(row.getMemberName())
+                        .itemName(row.getItemName())
+                        .quantity(row.getQuantity())
+                        .build())
+                .toList();
         return VaultItemDistributionDashboardDto.builder()
                 .activeMemberCount(members.size())
                 .weeklyGrantCount(weekly.size())
                 .unpaidMemberCount((int) rows.stream().filter(row -> "미지급".equals(row.getStatus())).count())
                 .todayQuantity(todayQuantity)
                 .members(rows)
+                .history(history)
                 .build();
     }
 
