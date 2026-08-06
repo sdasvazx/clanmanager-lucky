@@ -6588,6 +6588,8 @@ function InventoryPage({ member }) {
   const [dashboardStats, setDashboardStats] = useState({ activeMemberCount: 0, weeklyGrantCount: 0, unpaidMemberCount: 0, todayQuantity: 0 });
   const [paying, setPaying] = useState(false);
   const [paymentMessage, setPaymentMessage] = useState('');
+  const [distributionHistory, setDistributionHistory] = useState([]);
+  const [showDistributionHistory, setShowDistributionHistory] = useState(false);
 
   const applyDashboard = (data) => {
     const rows = (Array.isArray(data?.members) ? data.members : []).map((row) => ({
@@ -6604,6 +6606,7 @@ function InventoryPage({ member }) {
       unpaidMemberCount: data?.unpaidMemberCount || 0,
       todayQuantity: data?.todayQuantity || 0,
     });
+    setDistributionHistory(Array.isArray(data?.history) ? data.history : []);
   };
 
   useEffect(() => {
@@ -6781,7 +6784,29 @@ function InventoryPage({ member }) {
               ))}
               {!filteredAppliedMembers.length && <p>{appliedMembers.length ? '검색 결과가 없습니다.' : '명단에서 인원을 선택한 후 적용해 주세요.'}</p>}
             </div>
+            <button type="button" className="vault-history-toggle" onClick={() => setShowDistributionHistory((current) => !current)}>
+              지급 내역 {showDistributionHistory ? '접기' : '보기'} <span>{showDistributionHistory ? '⌃' : '⌄'}</span>
+            </button>
           </section>
+
+          {showDistributionHistory && (
+            <section className="vault-distribution-card vault-history-card">
+              <div className="vault-card-heading">
+                <div><span>04</span><h2>지급 내역</h2></div>
+                <small>최근 {distributionHistory.length}건</small>
+              </div>
+              <div className="vault-history-list">
+                {distributionHistory.map((row) => (
+                  <article key={row.distributionId}>
+                    <time>{row.distributedAt ? new Date(row.distributedAt).toLocaleString('ko-KR') : '-'}</time>
+                    <p><b>{row.distributedByName}</b>님이 <strong>{row.memberName}</strong>님에게</p>
+                    <div><span>{row.itemName}</span><em>{row.quantity}개</em></div>
+                  </article>
+                ))}
+                {!distributionHistory.length && <div className="empty-state">아직 지급 내역이 없습니다.</div>}
+              </div>
+            </section>
+          )}
         </aside>
       </div>
       <p className="vault-demo-note">지급 확정 내역은 서버와 데이터베이스에 저장됩니다.</p>
