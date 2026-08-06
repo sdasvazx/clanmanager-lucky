@@ -6583,22 +6583,33 @@ function InventoryPage({ member }) {
   const [quantity, setQuantity] = useState(1);
   const [checkedIds, setCheckedIds] = useState(new Set());
   const [appliedMembers, setAppliedMembers] = useState([]);
+  const [appliedMemberIds, setAppliedMemberIds] = useState([]);
   const [search, setSearch] = useState('');
+  const [dashboardStats, setDashboardStats] = useState({ activeMemberCount: 0, weeklyGrantCount: 0, unpaidMemberCount: 0, todayQuantity: 0 });
+  const [paying, setPaying] = useState(false);
+  const [paymentMessage, setPaymentMessage] = useState('');
+
+  const applyDashboard = (data) => {
+    const rows = (Array.isArray(data?.members) ? data.members : []).map((row) => ({
+      id: row.memberId,
+      nickname: row.characterName,
+      weekly: row.weeklyQuantity || 0,
+      recent: row.recentDistributedAt ? new Date(row.recentDistributedAt).toLocaleDateString('ko-KR') : '-',
+      status: row.status || '미지급',
+    }));
+    setDistributionMembers(rows);
+    setDashboardStats({
+      activeMemberCount: data?.activeMemberCount || 0,
+      weeklyGrantCount: data?.weeklyGrantCount || 0,
+      unpaidMemberCount: data?.unpaidMemberCount || 0,
+      todayQuantity: data?.todayQuantity || 0,
+    });
+  };
 
   useEffect(() => {
-    request('/members')
-      .then((rows) => {
-        const activeRows = (Array.isArray(rows) ? rows : [])
-          .filter((row) => row.active !== false)
-          .sort((a, b) => String(a.characterName || '').localeCompare(String(b.characterName || ''), 'ko'))
-          .map((row) => ({
-            id: row.memberId,
-            nickname: row.characterName,
-            weekly: 0,
-            recent: '-',
-            status: '미지급',
-          }));
-        setDistributionMembers(activeRows);
+    request('/vault-item-distributions')
+      .then((data) => {
+        applyDashboard(data);
         setRosterMessage('');
       })
       .catch((error) => setRosterMessage(error.message));
@@ -6640,6 +6651,33 @@ function InventoryPage({ member }) {
       .filter((row) => checkedIds.has(row.id))
       .map((row) => row.nickname);
     setAppliedMembers(names);
+    setAppliedMemberIds(Array.from(checkedIds));
+    setPaymentMessage('');
+  };
+  const confirmDistribution = async () => {
+    if (!canEdit || !appliedMemberIds.length) return;
+    setPaying(true);
+    setPaymentMessage('');
+    try {
+      const data = await request('/vault-item-distributions', {
+        method: 'POST',
+        body: JSON.stringify({
+          adminMemberId: member.memberId,
+          itemId: selectedItem,
+          quantity,
+          memberIds: appliedMemberIds,
+        }),
+      });
+      applyDashboard(data);
+      setPaymentMessage(`${appliedMembers.length}명에게 ${items.find((item) => item.id === selectedItem)?.name} ${quantity}개씩 지급했습니다.`);
+      setCheckedIds(new Set());
+      setAppliedMembers([]);
+      setAppliedMemberIds([]);
+    } catch (error) {
+      setPaymentMessage(error.message);
+    } finally {
+      setPaying(false);
+    }
   };
   return (
     <div className="vault-distribution-page">
@@ -6653,10 +6691,10 @@ function InventoryPage({ member }) {
       </header>
 
       <section className="vault-distribution-stats" aria-label="금고 분배 요약">
-        <article><span>♙</span><div><small>활성 클랜원</small><strong>{distributionMembers.length}</strong></div></article>
-        <article><span>▤</span><div><small>이번 주 지급</small><strong>18건</strong></div></article>
-        <article><span>♧</span><div><small>미지급 인원</small><strong>3명</strong></div></article>
-        <article><span>□</span><div><small>오늘 분배 수량</small><strong>6개</strong></div></article>
+        <article><span>♙</span><div><small>활성 클랜원</small><strong>{dashboardStats.activeMemberCount}명</strong></div></article>
+        <article><span>▤</span><div><small>이번 주 지급</small><strong>{dashboardStats.weeklyGrantCount}건</strong></div></article>
+        <article><span>♧</span><div><small>미지급 인원</small><strong>{dashboardStats.unpaidMemberCount}명</strong></div></article>
+        <article><span>□</span><div><small>오늘 분배 수량</small><strong>{dashboardStats.todayQuantity}개</strong></div></article>
       </section>
 
       <div className="vault-distribution-layout">
@@ -6715,9 +6753,15 @@ function InventoryPage({ member }) {
               <button type="button" aria-label="수량 늘리기" onClick={() => changeQuantity(quantity + 1)} disabled={!canEdit}>+</button>
             </div>
             {canEdit ? (
-              <button type="button" className="vault-apply-button" onClick={applySelectedMembers} disabled={!checkedIds.size}>
-                전체 선택 <span>›</span> 인원 적용
-              </button>
+              <>
+                <button type="button" className="vault-apply-button" onClick={applySelectedMembers} disabled={!checkedIds.size}>
+                  전체 선택 <span>›</span> 인원 적용
+                </button>
+                <button type="button" className="vault-payment-button" onClick={confirmDistribution} disabled={!appliedMembers.length || paying}>
+                  {paying ? '지급 처리 중...' : '지급 확정'}
+                </button>
+                {paymentMessage && <p className="vault-payment-message">{paymentMessage}</p>}
+              </>
             ) : <p className="vault-readonly-message">클랜원 계정은 열람만 가능합니다.</p>}
           </section>
 
@@ -6729,14 +6773,18 @@ function InventoryPage({ member }) {
             <div className="vault-member-search"><span>⌕</span><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="이름 검색" /></div>
             <div className="vault-member-tags">
               {filteredAppliedMembers.map((name) => (
-                <span key={name}>{name}{canEdit && <button type="button" aria-label={`${name} 제거`} onClick={() => setAppliedMembers((current) => current.filter((memberName) => memberName !== name))}>×</button>}</span>
+                <span key={name}>{name}{canEdit && <button type="button" aria-label={`${name} 제거`} onClick={() => {
+                  const target = distributionMembers.find((row) => row.nickname === name);
+                  setAppliedMembers((current) => current.filter((memberName) => memberName !== name));
+                  if (target) setAppliedMemberIds((current) => current.filter((id) => id !== target.id));
+                }}>×</button>}</span>
               ))}
               {!filteredAppliedMembers.length && <p>{appliedMembers.length ? '검색 결과가 없습니다.' : '명단에서 인원을 선택한 후 적용해 주세요.'}</p>}
             </div>
           </section>
         </aside>
       </div>
-      <p className="vault-demo-note">화면 동작 예시이며 서버와 데이터베이스에는 저장되지 않습니다.</p>
+      <p className="vault-demo-note">지급 확정 내역은 서버와 데이터베이스에 저장됩니다.</p>
     </div>
   );
 }
