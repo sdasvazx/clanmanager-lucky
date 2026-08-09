@@ -1231,6 +1231,7 @@ function AuthScreen({ onLogin }) {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [loading, setLoading] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
 
   const submit = async (event) => {
     event.preventDefault();
@@ -1257,6 +1258,7 @@ function AuthScreen({ onLogin }) {
         body: JSON.stringify({
           characterName: form.characterName,
           password: isRegister ? DEFAULT_INITIAL_PASSWORD : form.password,
+          rememberMe,
         }),
       });
       onLogin(loggedIn);
@@ -1283,6 +1285,15 @@ function AuthScreen({ onLogin }) {
             비밀번호
             <input required type={isRegister ? 'text' : 'password'} readOnly={isRegister} value={isRegister ? DEFAULT_INITIAL_PASSWORD : form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
           </label>
+          {!isRegister && (
+            <label className="remember-login-option">
+              <input type="checkbox" checked={rememberMe} onChange={(event) => setRememberMe(event.target.checked)} />
+              <span>
+                <b>이 기기에서 자동 로그인</b>
+                <small>체크하면 같은 브라우저에서 30일 동안 로그인 상태를 유지합니다.</small>
+              </span>
+            </label>
+          )}
           {isRegister && (
             <p className="subtle">
               처음 로그인 비밀번호는 모든 클랜원 공통 {DEFAULT_INITIAL_PASSWORD}

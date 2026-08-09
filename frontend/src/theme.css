@@ -1204,3 +1204,24 @@
     width: 100%;
   }
 }
+/* Login persistence choice */
+.auth-card .remember-login-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 11px 12px;
+  border: 1px solid #dbe5f1;
+  border-radius: 10px;
+  background: #f8fbff;
+  cursor: pointer;
+}
+.auth-card .remember-login-option input {
+  width: 17px;
+  height: 17px;
+  margin: 2px 0 0;
+  accent-color: #2978ed;
+  box-shadow: none;
+}
+.remember-login-option span { display: grid; gap: 3px; }
+.remember-login-option b { color: #263a56; font-size: .9rem; }
+.remember-login-option small { color: #73829a; font-size: .78rem; font-weight: 500; line-height: 1.4; }
