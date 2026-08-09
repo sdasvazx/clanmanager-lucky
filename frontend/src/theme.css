@@ -924,6 +924,117 @@
   opacity: 1;
 }
 
+/* Apply the selected dark palette to every table, including legacy tables
+   whose row backgrounds were hard-coded to white in feature stylesheets. */
+[data-theme="dark"] table {
+  background: #26262a;
+  color: #e7e7e5;
+}
+
+[data-theme="dark"] table thead th,
+[data-theme="dark"] table th,
+[data-theme="dark"] table th.sticky-col {
+  background: #26262a !important;
+  border-color: #38383c !important;
+  color: #c5c5c3 !important;
+}
+
+[data-theme="dark"] table tbody tr:nth-child(odd) td,
+[data-theme="dark"] table tbody tr:nth-child(odd) th,
+[data-theme="dark"] table tbody tr:nth-child(odd) .sticky-col {
+  background: #26262a !important;
+  border-color: #38383c !important;
+  color: #e7e7e5;
+}
+
+[data-theme="dark"] table tbody tr:nth-child(even) td,
+[data-theme="dark"] table tbody tr:nth-child(even) th,
+[data-theme="dark"] table tbody tr:nth-child(even) .sticky-col {
+  background: #2d2d30 !important;
+  border-color: #38383c !important;
+  color: #e7e7e5;
+}
+
+[data-theme="dark"] table tbody tr:hover td,
+[data-theme="dark"] table tbody tr:hover .sticky-col {
+  background: #302d42 !important;
+}
+
+[data-theme="dark"] table td small {
+  color: #a0a0a0;
+}
+
+[data-theme="gold"] table {
+  background: #1d1b16;
+  color: #fef3c7;
+}
+
+[data-theme="gold"] table thead th,
+[data-theme="gold"] table th,
+[data-theme="gold"] table th.sticky-col {
+  background: #252115 !important;
+  border-color: #4a3b19 !important;
+  color: #f5e7b5 !important;
+}
+
+[data-theme="gold"] table tbody tr:nth-child(odd) td,
+[data-theme="gold"] table tbody tr:nth-child(odd) th,
+[data-theme="gold"] table tbody tr:nth-child(odd) .sticky-col {
+  background: #1d1b16 !important;
+  border-color: #4a3b19 !important;
+  color: #fef3c7;
+}
+
+[data-theme="gold"] table tbody tr:nth-child(even) td,
+[data-theme="gold"] table tbody tr:nth-child(even) th,
+[data-theme="gold"] table tbody tr:nth-child(even) .sticky-col {
+  background: #252115 !important;
+  border-color: #4a3b19 !important;
+  color: #fef3c7;
+}
+
+[data-theme="gold"] table tbody tr:hover td,
+[data-theme="gold"] table tbody tr:hover .sticky-col {
+  background: #3f2f12 !important;
+}
+
+[data-theme="gold"] table td small {
+  color: #c7b680;
+}
+
+[data-theme="dark"] .menu-item.active,
+[data-theme="dark"] .menu-item:hover {
+  background: #302d42;
+  color: #e7e7e5 !important;
+}
+
+[data-theme="dark"] .menu-item.active .menu-icon {
+  background: #8b7fd9;
+  color: #f1f0ed;
+}
+
+[data-theme="gold"] .menu-item,
+[data-theme="gold"] .menu-item.active,
+[data-theme="gold"] .menu-item:hover {
+  border-color: #4a3b19;
+  color: #fef3c7 !important;
+}
+
+[data-theme="gold"] .menu-item.active,
+[data-theme="gold"] .menu-item:hover {
+  background: #3f2f12;
+}
+
+[data-theme="gold"] .menu-item.active .menu-icon {
+  background: #f59e0b;
+  color: #1d1b16;
+}
+
+[data-theme="dark"] .menu-item > span:last-child,
+[data-theme="gold"] .menu-item > span:last-child {
+  color: inherit !important;
+}
+
 @media (max-width: 760px) {
   .theme-picker {
     max-width: 44px;
