@@ -7365,7 +7365,7 @@ function CollectionPage({ member }) {
       }),
     [visibleMembers, participationByMember]
   );
-  const { sortedRows: sortedCollectionMembers, sortKey: collectionSortKey, sortDirection: collectionSortDirection, toggleSort: toggleCollectionSort } = useSortableRows(collectionSortableRows, 'sortableCharacterName', 'asc');
+  const { sortedRows: sortedCollectionMembers, sortKey: collectionSortKey, sortDirection: collectionSortDirection, toggleSort: toggleCollectionSort } = useSortableRows(collectionSortableRows, 'sortableCombatPower', 'desc');
   const filteredCollectionLogs = useMemo(() => {
     const keyword = normalize(logSearch);
     const histories = Array.isArray(data.histories) ? data.histories : [];
