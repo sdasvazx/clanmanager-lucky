@@ -1390,9 +1390,6 @@ function Shell({ member, page, setPage, onLogout, children, favorites = [], togg
             ))}
           </select>
         </label>
-        <button className="circle-button" title={theme === 'dark' ? '기본 파랑' : '다크 모드'} onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
-          {theme === 'dark' ? '☀' : '☾'}
-        </button>
         <button className="profile-menu name-only">
           <span>{member.characterName}</span>
         </button>
