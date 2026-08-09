@@ -81,6 +81,7 @@ public class AuthController {
     @Transactional
     public ResponseEntity<LoginResponseDto> login(
             @Valid @RequestBody LoginRequestDto request,
+            HttpServletRequest httpRequest,
             HttpServletResponse response
     ) {
         Member member = memberRepository.findByCharacterName(request.getCharacterName())
@@ -108,8 +109,13 @@ public class AuthController {
         }
         if (memberChanged) memberRepository.save(member);
 
-        String refreshToken = issueRefreshToken(member);
-        response.addHeader(HttpHeaders.SET_COOKIE, refreshCookie(refreshToken, refreshCookieMaxAge).toString());
+        if (Boolean.TRUE.equals(request.getRememberMe())) {
+            String refreshToken = issueRefreshToken(member);
+            response.addHeader(HttpHeaders.SET_COOKIE, refreshCookie(refreshToken, refreshCookieMaxAge).toString());
+        } else {
+            revokeCookieToken(httpRequest);
+            response.addHeader(HttpHeaders.SET_COOKIE, refreshCookie("", Duration.ZERO).toString());
+        }
         return ResponseEntity.ok(loginResponse(member));
     }
 
@@ -145,11 +151,7 @@ public class AuthController {
     @PostMapping("/logout")
     @Transactional
     public ResponseEntity<Void> logout(HttpServletRequest request, HttpServletResponse response) {
-        String rawToken = readRefreshCookie(request);
-        if (rawToken != null) {
-            refreshTokenRepository.findByTokenHash(jwtTokenProvider.hash(rawToken))
-                    .ifPresent(token -> token.setRevoked(true));
-        }
+        revokeCookieToken(request);
         response.addHeader(HttpHeaders.SET_COOKIE, refreshCookie("", Duration.ZERO).toString());
         return ResponseEntity.noContent().build();
     }
@@ -188,5 +190,13 @@ public class AuthController {
             if ("refreshToken".equals(cookie.getName())) return cookie.getValue();
         }
         return null;
+    }
+
+    private void revokeCookieToken(HttpServletRequest request) {
+        String rawToken = readRefreshCookie(request);
+        if (rawToken != null) {
+            refreshTokenRepository.findByTokenHash(jwtTokenProvider.hash(rawToken))
+                    .ifPresent(token -> token.setRevoked(true));
+        }
     }
 }
