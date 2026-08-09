@@ -20,6 +20,16 @@ app:
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
 
+auth:
+  jwt:
+    secret: ${AUTH_JWT_SECRET:change-this-development-secret-at-least-32-characters}
+    access-lifetime: ${AUTH_ACCESS_LIFETIME:PT30M}
+    refresh-lifetime: ${AUTH_REFRESH_LIFETIME:P30D}
+  cookie:
+    secure: ${AUTH_COOKIE_SECURE:true}
+    same-site: ${AUTH_COOKIE_SAME_SITE:Strict}
+    max-age: ${AUTH_COOKIE_MAX_AGE:P30D}
+
 watch:
   api-key: ${WATCH_API_KEY:}
 
