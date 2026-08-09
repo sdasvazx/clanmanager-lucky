@@ -12,6 +12,11 @@ const ROULETTE_URL = 'https://lazygyu.github.io/roulette/';
 const VAMPIR_FORUM_URL = 'https://forum.netmarble.com/vampir/list/2';
 const DEFAULT_INITIAL_PASSWORD = '112200';
 
+// Tokens deliberately live only in this JavaScript module's memory.
+let accessTokenMemory = null;
+let currentMemberMemory = null;
+let refreshInFlight = null;
+
 const THEME_PRESETS = [
   { id: 'light', label: '기본 파랑', icon: '🔵' },
   { id: 'violet', label: '보라', icon: '🟣' },
@@ -70,20 +75,48 @@ const readFavorites = (member) => {
 const writeFavorites = (member, ids) => localStorage.setItem(favoriteStorageKey(member), JSON.stringify(ids));
 
 async function request(path, options = {}) {
-  const storedMember = JSON.parse(sessionStorage.getItem('clanMember') || 'null');
+  const storedMember = currentMemberMemory;
   const memberHeader = storedMember?.memberId && !path.startsWith('/auth/') ? { 'X-Clan-Member-Id': String(storedMember.memberId) } : {};
+  const tokenHeader = accessTokenMemory && !path.startsWith('/auth/') ? { Authorization: `Bearer ${accessTokenMemory}` } : {};
   const response = await fetch(`${API_BASE}${path}`, {
     ...options,
-    headers: { 'Content-Type': 'application/json', ...memberHeader, ...options.headers },
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json', ...memberHeader, ...tokenHeader, ...options.headers },
   });
+  if (response.status === 401 && !path.startsWith('/auth/') && !options._retried) {
+    const refreshed = await refreshAuthentication();
+    if (refreshed) return request(path, { ...options, _retried: true });
+  }
   const body = await response.json().catch(() => ({}));
   if (response.status === 403 && body.code === 'PASSWORD_CHANGE_REQUIRED' && storedMember) {
     const forcedMember = { ...storedMember, mustChangePassword: true };
-    sessionStorage.setItem('clanMember', JSON.stringify(forcedMember));
+    currentMemberMemory = forcedMember;
     window.dispatchEvent(new CustomEvent('clan-password-change-required', { detail: forcedMember }));
   }
   if (!response.ok) throw new Error(body.message ?? '요청 처리 중 오류가 발생했습니다.');
   return body;
+}
+
+async function refreshAuthentication() {
+  if (!refreshInFlight) {
+    refreshInFlight = fetch(`${API_BASE}/auth/refresh`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+    })
+      .then(async (response) => {
+        if (!response.ok) return null;
+        const session = await response.json();
+        accessTokenMemory = session.accessToken;
+        currentMemberMemory = session;
+        return session;
+      })
+      .catch(() => null)
+      .finally(() => {
+        refreshInFlight = null;
+      });
+  }
+  return refreshInFlight;
 }
 
 const formatNumber = (value) => Number(value || 0).toLocaleString();
@@ -9563,23 +9596,38 @@ function ActivitySettingsPage({ member, setPage }) {
 }
 
 export default function App() {
-  const [member, setMember] = useState(() => JSON.parse(sessionStorage.getItem('clanMember') || 'null'));
+  const [member, setMember] = useState(null);
+  const [checkingAuthentication, setCheckingAuthentication] = useState(true);
   const [page, setPage] = useState('lobby');
-  const [favorites, setFavorites] = useState(() => readFavorites(JSON.parse(sessionStorage.getItem('clanMember') || 'null')));
+  const [favorites, setFavorites] = useState([]);
   const login = (data) => {
-    sessionStorage.setItem('clanMember', JSON.stringify(data));
+    accessTokenMemory = data.accessToken;
+    currentMemberMemory = data;
     setMember(data);
   };
   const updateCurrentMember = (data) => {
-    sessionStorage.setItem('clanMember', JSON.stringify(data));
-    setMember(data);
+    currentMemberMemory = { ...currentMemberMemory, ...data };
+    setMember(currentMemberMemory);
   };
-  const logout = () => {
-    sessionStorage.removeItem('clanMember');
+  const logout = async () => {
+    await fetch(`${API_BASE}/auth/logout`, { method: 'POST', credentials: 'include' }).catch(() => {});
+    accessTokenMemory = null;
+    currentMemberMemory = null;
     setMember(null);
     setPage('lobby');
     setFavorites([]);
   };
+  useEffect(() => {
+    let active = true;
+    refreshAuthentication().then((session) => {
+      if (!active) return;
+      if (session) setMember(session);
+      setCheckingAuthentication(false);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
   useEffect(() => {
     if (member) setFavorites(readFavorites(member));
   }, [member?.memberId]);
@@ -9596,6 +9644,17 @@ export default function App() {
       return next;
     });
   };
+  if (checkingAuthentication) {
+    return (
+      <main className="auth-page">
+        <section className="auth-card light-auth">
+          <div className="auth-mark">C</div>
+          <h1>운좋은</h1>
+          <p>자동 로그인 확인 중...</p>
+        </section>
+      </main>
+    );
+  }
   if (!member) return <AuthScreen onLogin={login} />;
   if (member.mustChangePassword) {
     return <ForcedPasswordChangeScreen member={member} onComplete={updateCurrentMember} onLogout={logout} />;
