@@ -10,6 +10,7 @@ import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
+import org.springframework.security.core.Authentication;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
@@ -314,8 +315,12 @@ public class ManagementRecordController {
     }
 
     @PatchMapping("/collection-statuses")
-    public CollectionStatusDto updateCollectionStatus(@Valid @RequestBody CollectionStatusRequest request) {
+    public CollectionStatusDto updateCollectionStatus(@Valid @RequestBody CollectionStatusRequest request, Authentication authentication) {
         Member actor = validateMember(request.getActorMemberId());
+        if (authentication == null || !authentication.isAuthenticated()
+                || !String.valueOf(actor.getMemberId()).equals(authentication.getName())) {
+            throw new SecurityException("로그인한 사용자와 수정 요청자가 일치하지 않습니다.");
+        }
         Member target = memberRepository.findById(request.getMemberId())
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 클랜원입니다."));
         if (actor.getRole() != MemberRole.ADMIN && !actor.getMemberId().equals(target.getMemberId())) {
@@ -331,6 +336,12 @@ public class ManagementRecordController {
                         .state("미완료")
                         .build());
         String previousState = status.getCollectionStatusId() == null ? "미완료" : status.getState();
+        if (actor.getRole() != MemberRole.ADMIN && !"완료".equals(nextState)) {
+            throw new SecurityException("완료한 항목의 취소는 운영진에게 문의해 주세요.");
+        }
+        if (actor.getRole() != MemberRole.ADMIN && "완료".equals(previousState)) {
+            throw new SecurityException("이미 완료한 항목은 운영자만 수정할 수 있습니다.");
+        }
         if (actor.getRole() != MemberRole.ADMIN && Boolean.TRUE.equals(status.getLocked())) {
             throw new SecurityException("운영자가 잠근 항목은 수정할 수 없습니다.");
         }
@@ -355,8 +366,8 @@ public class ManagementRecordController {
     }
 
     @PatchMapping("/collection-statuses/self")
-    public CollectionStatusDto updateOwnCollectionStatus(@Valid @RequestBody CollectionStatusRequest request) {
-        return updateCollectionStatus(request);
+    public CollectionStatusDto updateOwnCollectionStatus(@Valid @RequestBody CollectionStatusRequest request, Authentication authentication) {
+        return updateCollectionStatus(request, authentication);
     }
 
     @PatchMapping("/collection-statuses/lock")

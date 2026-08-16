@@ -1907,13 +1907,13 @@ function AdminBackButton({ setPage }) {
   ) : null;
 }
 
-function useIncompleteCollections(memberId) {
+function useIncompleteCollections(memberId, refreshKey = 0) {
   const [collectionData, setCollectionData] = useState(null);
   useEffect(() => {
     request('/management/collection-dashboard')
       .then(setCollectionData)
       .catch(() => setCollectionData(null));
-  }, []);
+  }, [memberId, refreshKey]);
   return useMemo(() => {
     if (!collectionData?.items?.length || !collectionData?.statuses) return [];
     const statusMap = new Map(collectionData.statuses.map((row) => [`${row.memberId}:${row.itemId}`, row.state]));
@@ -1972,7 +1972,7 @@ function MyInfo({ member, setPage }) {
   );
 }
 
-function ProfileCard({ member, info, incompleteCollections = [], participationSummary, bossRecords = [], bossHistory = [], period = getParticipationPeriod(getCurrentParticipationPeriodIndex()), periodHistory = [], setPage }) {
+function ProfileCard({ member, info, incompleteCollections = [], onCompleteCollection, completingCollectionId, participationSummary, bossRecords = [], bossHistory = [], period = getParticipationPeriod(getCurrentParticipationPeriodIndex()), periodHistory = [], setPage }) {
   const [rosterSettings] = useRosterSettings();
   const currentRow = useMemo(() => (participationSummary?.rows || []).find((row) => Number(row.memberId) === Number(info.memberId)), [participationSummary, info.memberId]);
   const activityColumns = participationSummary?.activityColumns || [];
@@ -2183,15 +2183,25 @@ function ProfileCard({ member, info, incompleteCollections = [], participationSu
       </div>
 
       <div className="my-collection-alert">
-        <div>
-          <b>미완료 컬렉템</b>
-          <p>{incompleteCollections.length ? '아직 받지 않은 컬렉템입니다.' : '모든 컬렉템이 완료 상태입니다.'}</p>
+        <div className="my-collection-alert-heading">
+          <div>
+            <b>미완료 컬렉템·스킬</b>
+            <p>{incompleteCollections.length ? '배운 스킬을 체크하면 완료 처리되고 목록에서 사라집니다.' : '모든 컬렉템과 스킬이 완료 상태입니다.'}</p>
+          </div>
+          {!!onCompleteCollection && <strong>잘못 체크 시 운영진 문의</strong>}
         </div>
         <div className="my-collection-chip-list">
-          {incompleteCollections.slice(0, 12).map((item) => (
-            <span key={item.itemId}>{item.itemName}</span>
-          ))}
-          {incompleteCollections.length > 12 && <span>+{incompleteCollections.length - 12}개</span>}
+          {incompleteCollections.map((item) =>
+            onCompleteCollection ? (
+              <button type="button" key={item.itemId} disabled={Number(completingCollectionId) === Number(item.itemId)} onClick={() => onCompleteCollection(item)}>
+                <span aria-hidden="true">✓</span>
+                {Number(completingCollectionId) === Number(item.itemId) ? '처리 중' : item.itemName}
+              </button>
+            ) : (
+              <span key={item.itemId}>{item.itemName}</span>
+            )
+          )}
+          {!incompleteCollections.length && <span className="complete-message">완료된 상태입니다.</span>}
         </div>
       </div>
     </section>
@@ -7373,6 +7383,10 @@ function CollectionPage({ member }) {
   };
   const toggleCollectionStatus = (targetMember, item) => {
     const { state } = collectionCell(targetMember, item);
+    if (!isAdmin && state === '완료') {
+      setMessage('완료한 항목을 미완료로 되돌리려면 운영진에게 문의해 주세요.');
+      return;
+    }
     updateStatus(targetMember, item, state === '완료' ? '미완료' : '완료');
   };
   const collectionClanOptions = useMemo(() => Array.from(new Set(data.members.map((row) => canonicalClanName(row.guildName)).filter(Boolean))).sort(), [data.members]);
@@ -7613,7 +7627,7 @@ function CollectionPage({ member }) {
                     {visibleItems.map((item) => {
                       const { key, status, state } = collectionCell(targetMember, item);
                       const done = state === '완료';
-                      const canEditStatus = isAdmin || (Number(targetMember.memberId) === Number(member.memberId) && !status?.locked);
+                      const canEditStatus = isAdmin || (Number(targetMember.memberId) === Number(member.memberId) && !done && !status?.locked);
                       return (
                         <td key={key}>
                           <div className="collection-cell-actions">
@@ -7624,9 +7638,11 @@ function CollectionPage({ member }) {
                               title={
                                 status?.locked
                                   ? '운영자가 잠근 항목입니다.'
-                                  : status?.updatedByName
+                                  : done && !isAdmin
+                                    ? '완료 취소는 운영진에게 문의해 주세요.'
+                                    : status?.updatedByName
                                     ? `${status.updatedByName} · ${new Date(status.updatedAt).toLocaleString('ko-KR')}`
-                                    : '클릭해서 완료/미완료 변경'
+                                    : '클릭해서 완료 처리'
                               }
                               onClick={() => toggleCollectionStatus(targetMember, item)}
                             >
@@ -7956,7 +7972,10 @@ function MyPage({ member, setPage, favoritePages = [], onMemberUpdate }) {
   });
   const [nameMessage, setNameMessage] = useState('');
   const [rosterSettings] = useRosterSettings();
-  const incompleteCollections = useIncompleteCollections(member.memberId);
+  const [collectionRefreshKey, setCollectionRefreshKey] = useState(0);
+  const [completingCollectionId, setCompletingCollectionId] = useState(null);
+  const [collectionMessage, setCollectionMessage] = useState('');
+  const incompleteCollections = useIncompleteCollections(member.memberId, collectionRefreshKey);
   useEffect(() => {
     request(`/members/${member.memberId}/my-info`)
       .then(setInfo)
@@ -8021,6 +8040,29 @@ function MyPage({ member, setPage, favoritePages = [], onMemberUpdate }) {
       setPasswordMessage(err.message);
     }
   };
+  const completeCollection = async (item) => {
+    if (!window.confirm(`${item.itemName}을(를) 배운 것으로 완료 체크할까요?\n완료 후 취소는 운영진만 가능합니다.`)) return;
+    setCompletingCollectionId(item.itemId);
+    setCollectionMessage('');
+    try {
+      await request('/management/collection-statuses/self', {
+        method: 'PATCH',
+        body: JSON.stringify({
+          memberId: member.memberId,
+          itemId: item.itemId,
+          state: '완료',
+          memo: '마이페이지에서 본인 완료 체크',
+          actorMemberId: member.memberId,
+        }),
+      });
+      setCollectionRefreshKey((value) => value + 1);
+      setCollectionMessage(`${item.itemName}을(를) 완료 처리했습니다.`);
+    } catch (err) {
+      setCollectionMessage(err.message);
+    } finally {
+      setCompletingCollectionId(null);
+    }
+  };
   return (
     <>
       <div className="page-title">
@@ -8028,7 +8070,14 @@ function MyPage({ member, setPage, favoritePages = [], onMemberUpdate }) {
         <p>내 계정과 활동 정보를 확인합니다.</p>
       </div>
       <FavoriteLinks favorites={favoritePages} setPage={setPage} />
-      <ProfileCard member={member} info={info} incompleteCollections={incompleteCollections} />
+      <ProfileCard
+        member={member}
+        info={info}
+        incompleteCollections={incompleteCollections}
+        onCompleteCollection={completeCollection}
+        completingCollectionId={completingCollectionId}
+      />
+      {collectionMessage && <p className="vault-message">{collectionMessage}</p>}
       <section className="white-card">
         <h2>계정 정보</h2>
         <div className="detail-grid">

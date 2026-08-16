@@ -2957,6 +2957,21 @@
   color: #b91c1c;
 }
 
+.my-collection-alert-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  width: 100%;
+}
+
+.my-collection-alert-heading strong {
+  flex: 0 0 auto;
+  color: #dc2626;
+  font-size: 13px;
+  text-align: right;
+}
+
 .my-collection-alert p {
   margin: 4px 0 0;
   color: #64748b;
@@ -2975,6 +2990,49 @@
   color: #b91c1c;
   font-size: .84rem;
   font-weight: 900;
+}
+
+.my-collection-chip-list button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 11px;
+  border: 1px solid #fecaca;
+  border-radius: 999px;
+  background: #fee2e2;
+  color: #b91c1c;
+  font: inherit;
+  font-size: .84rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.my-collection-chip-list button:hover {
+  border-color: #ef4444;
+  background: #fecaca;
+}
+
+.my-collection-chip-list button:disabled {
+  cursor: wait;
+  opacity: .65;
+}
+
+.my-collection-chip-list .complete-message {
+  border: 1px solid #bbf7d0;
+  background: #dcfce7;
+  color: #15803d;
+}
+
+@media (max-width: 640px) {
+  .my-collection-alert-heading {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .my-collection-alert-heading strong {
+    text-align: left;
+  }
 }
 
 .my-info-title {
