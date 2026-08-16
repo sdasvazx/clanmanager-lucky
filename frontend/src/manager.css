@@ -5093,6 +5093,84 @@
   left: 54px;
 }
 
+/* Keep the collapsed mobile navigation as a bottom bar. The expanded mobile
+   navigation can still use the full-screen sidebar rules above. */
+@media (max-width: 768px) {
+  .shell.collapsed {
+    padding-left: 0;
+    padding-top: 54px;
+    padding-bottom: 76px;
+  }
+
+  .collapsed .sidebar {
+    top: auto;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 68px;
+    display: block;
+    flex-direction: initial;
+    border-top: 1px solid #dfe7f1;
+    border-right: 0;
+    box-shadow: 0 -10px 26px #10233d12;
+  }
+
+  .collapsed .sidebar nav {
+    display: flex;
+    height: 100%;
+    max-height: 68px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 7px 8px 9px;
+    gap: 6px;
+    scroll-snap-type: x proximity;
+  }
+
+  .collapsed .menu-row,
+  .collapsed .menu-row.active,
+  .collapsed .menu-row:hover {
+    min-width: 62px;
+    width: 62px;
+    flex: 0 0 62px;
+    display: grid;
+    place-items: center;
+    border: 0;
+    border-radius: 15px;
+    background: transparent;
+    scroll-snap-align: start;
+  }
+
+  .collapsed .menu-row .menu-item,
+  .collapsed .menu-item {
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    display: grid;
+    justify-items: center;
+    align-content: center;
+    padding: 4px 3px;
+  }
+
+  .collapsed .menu-row .menu-item > span:last-child,
+  .collapsed .menu-item > span:last-child {
+    display: none;
+  }
+
+  .topbar .profile-menu.name-only span,
+  .topbar .profile-menu.name-only i {
+    display: none !important;
+  }
+
+  .table-wrap,
+  .boss-table-scroll,
+  .collection-wide-wrap {
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
 @media (max-width: 800px) {
   .admin-alert-grid {
     grid-template-columns: 1fr;
