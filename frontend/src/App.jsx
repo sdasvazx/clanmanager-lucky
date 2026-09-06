@@ -1772,6 +1772,7 @@ function Lobby({ member, setPage, favoritePages = [] }) {
   ];
   return (
     <>
+      <BossAbsenceMonitor members={members} />
       <NoticePanel member={member} notices={notices} onReload={load} />
       <VampirNoticePanel
         notices={forumNews}
@@ -1795,14 +1796,7 @@ function Lobby({ member, setPage, favoritePages = [] }) {
           ))}
         </div>
       </section>
-      {member.role === 'ADMIN' ? (
-        <div className="lobby-admin-overview-grid">
-          <ParticipationRanking rows={participationRows} totalCount={participationSummary?.totalMemberCount ?? members.length} periodLabel={defaultPeriodName(currentPeriod)} />
-          <BossAbsenceMonitor member={member} members={members} />
-        </div>
-      ) : (
-        <ParticipationRanking rows={participationRows} totalCount={participationSummary?.totalMemberCount ?? members.length} periodLabel={defaultPeriodName(currentPeriod)} />
-      )}
+      <ParticipationRanking rows={participationRows} totalCount={participationSummary?.totalMemberCount ?? members.length} periodLabel={defaultPeriodName(currentPeriod)} />
     </>
   );
 }
@@ -1821,7 +1815,7 @@ const bossAbsenceLabel = (record) => {
 
 const bossRecordTimestamp = (record) => `${record?.bossDate || ''}T${record?.cutTime || '00:00:00'}|${record?.submittedAt || ''}`;
 
-function BossAbsenceMonitor({ member, members }) {
+function BossAbsenceMonitor({ members }) {
   const [records, setRecords] = useState([]);
   const [selectedKey, setSelectedKey] = useState('');
   const [recordDetails, setRecordDetails] = useState([]);
@@ -1830,7 +1824,6 @@ function BossAbsenceMonitor({ member, members }) {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (member.role !== 'ADMIN') return undefined;
     let active = true;
     setLoading(true);
     request('/boss-participations')
@@ -1852,7 +1845,7 @@ function BossAbsenceMonitor({ member, members }) {
     return () => {
       active = false;
     };
-  }, [member.memberId, member.role]);
+  }, []);
 
   const bossTypes = useMemo(() => {
     const seen = new Map();
@@ -1889,6 +1882,7 @@ function BossAbsenceMonitor({ member, members }) {
         const attendeeNames = new Set((Array.isArray(attendees) ? attendees : []).map((row) => normalize(row.characterName)).filter(Boolean));
         const eligibleMembers = members.filter((candidate) => {
           if (candidate.active === false) return false;
+          if (normalize(candidate.characterName) === normalize('미피')) return false;
           if (!candidate.createdAt || !record.bossDate) return true;
           return String(candidate.createdAt).slice(0, 10) <= String(record.bossDate);
         });
@@ -1940,7 +1934,7 @@ function BossAbsenceMonitor({ member, members }) {
           <h2>⚠️ 보스타임 미참여자</h2>
           <p className="subtle">13·17·21시는 최근 2주, 나머지는 최근 4회 기준입니다.</p>
         </div>
-        <span className="admin-only-badge">운영자 전용</span>
+        <span className="absence-visibility-badge">전체 공개</span>
       </div>
       {loading ? (
         <div className="empty-state compact">보스 기록을 확인하고 있습니다.</div>
