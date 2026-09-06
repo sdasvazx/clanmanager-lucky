@@ -1795,8 +1795,199 @@ function Lobby({ member, setPage, favoritePages = [] }) {
           ))}
         </div>
       </section>
-      <ParticipationRanking rows={participationRows} totalCount={participationSummary?.totalMemberCount ?? members.length} periodLabel={defaultPeriodName(currentPeriod)} />
+      {member.role === 'ADMIN' ? (
+        <div className="lobby-admin-overview-grid">
+          <ParticipationRanking rows={participationRows} totalCount={participationSummary?.totalMemberCount ?? members.length} periodLabel={defaultPeriodName(currentPeriod)} />
+          <BossAbsenceMonitor member={member} members={members} />
+        </div>
+      ) : (
+        <ParticipationRanking rows={participationRows} totalCount={participationSummary?.totalMemberCount ?? members.length} periodLabel={defaultPeriodName(currentPeriod)} />
+      )}
     </>
+  );
+}
+
+const bossAbsenceKey = (record) => {
+  const name = String(record?.activityTypeName || record?.bossName || '').trim();
+  const hour = name.match(/(01|05|09|13|17|21)\s*시/)?.[1];
+  return hour ? `${hour}시` : normalize(name);
+};
+
+const bossAbsenceLabel = (record) => {
+  const name = String(record?.activityTypeName || record?.bossName || '').trim();
+  const hour = name.match(/(01|05|09|13|17|21)\s*시/)?.[1];
+  return hour ? `${hour}시` : name || '기타 보스';
+};
+
+const bossRecordTimestamp = (record) => `${record?.bossDate || ''}T${record?.cutTime || '00:00:00'}|${record?.submittedAt || ''}`;
+
+function BossAbsenceMonitor({ member, members }) {
+  const [records, setRecords] = useState([]);
+  const [selectedKey, setSelectedKey] = useState('');
+  const [recordDetails, setRecordDetails] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (member.role !== 'ADMIN') return undefined;
+    let active = true;
+    setLoading(true);
+    request('/boss-participations')
+      .then((rows) => {
+        if (!active) return;
+        const validRows = (Array.isArray(rows) ? rows : [])
+          .filter((row) => row?.recordId && row.attendanceApplied !== false && row.activityTypeMatched !== false)
+          .sort((a, b) => bossRecordTimestamp(b).localeCompare(bossRecordTimestamp(a)));
+        setRecords(validRows);
+        setSelectedKey((current) => current || bossAbsenceKey(validRows[0]));
+        setError('');
+      })
+      .catch((loadError) => {
+        if (active) setError(loadError.message || '보스 참여 기록을 불러오지 못했습니다.');
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [member.memberId, member.role]);
+
+  const bossTypes = useMemo(() => {
+    const seen = new Map();
+    records.forEach((record) => {
+      const key = bossAbsenceKey(record);
+      if (key && !seen.has(key)) seen.set(key, bossAbsenceLabel(record));
+    });
+    return [...seen.entries()].map(([key, label]) => ({ key, label }));
+  }, [records]);
+
+  const selectedRecords = useMemo(() => {
+    const grouped = records.filter((record) => bossAbsenceKey(record) === selectedKey);
+    if (/^(13|17|21)시$/.test(selectedKey)) {
+      const threshold = new Date();
+      threshold.setHours(0, 0, 0, 0);
+      threshold.setDate(threshold.getDate() - 13);
+      const thresholdText = `${threshold.getFullYear()}-${String(threshold.getMonth() + 1).padStart(2, '0')}-${String(threshold.getDate()).padStart(2, '0')}`;
+      return grouped.filter((record) => String(record.bossDate || '') >= thresholdText);
+    }
+    return grouped.slice(0, 4);
+  }, [records, selectedKey]);
+
+  useEffect(() => {
+    if (!selectedKey || !selectedRecords.length) {
+      setRecordDetails([]);
+      return undefined;
+    }
+    let active = true;
+    setDetailLoading(true);
+    Promise.all(
+      selectedRecords.map(async (record) => {
+        const attendees = await request(`/boss-participations/${record.recordId}/members`);
+        const attendeeIds = new Set((Array.isArray(attendees) ? attendees : []).map((row) => String(row.memberId || '')).filter(Boolean));
+        const attendeeNames = new Set((Array.isArray(attendees) ? attendees : []).map((row) => normalize(row.characterName)).filter(Boolean));
+        const eligibleMembers = members.filter((candidate) => {
+          if (candidate.active === false) return false;
+          if (!candidate.createdAt || !record.bossDate) return true;
+          return String(candidate.createdAt).slice(0, 10) <= String(record.bossDate);
+        });
+        const absentMembers = eligibleMembers.filter(
+          (candidate) => !attendeeIds.has(String(candidate.memberId)) && !attendeeNames.has(normalize(candidate.characterName))
+        );
+        return { record, absentMembers };
+      })
+    )
+      .then((rows) => {
+        if (active) {
+          setRecordDetails(rows);
+          setError('');
+        }
+      })
+      .catch((loadError) => {
+        if (active) {
+          setRecordDetails([]);
+          setError(loadError.message || '미참여 세부내역을 불러오지 못했습니다.');
+        }
+      })
+      .finally(() => {
+        if (active) setDetailLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [members, selectedKey, selectedRecords]);
+
+  const repeatedAbsences = useMemo(() => {
+    const aggregate = new Map();
+    recordDetails.forEach(({ record, absentMembers }) => {
+      absentMembers.forEach((candidate) => {
+        const key = String(candidate.memberId || normalize(candidate.characterName));
+        const current = aggregate.get(key) || { member: candidate, records: [] };
+        current.records.push(record);
+        aggregate.set(key, current);
+      });
+    });
+    return [...aggregate.values()]
+      .filter((row) => row.records.length >= 2)
+      .sort((a, b) => b.records.length - a.records.length || String(a.member.characterName).localeCompare(String(b.member.characterName), 'ko'));
+  }, [recordDetails]);
+
+  return (
+    <section className="white-card boss-absence-card">
+      <div className="section-heading compact">
+        <div>
+          <h2>⚠️ 보스타임 미참여자</h2>
+          <p className="subtle">13·17·21시는 최근 2주, 나머지는 최근 4회 기준입니다.</p>
+        </div>
+        <span className="admin-only-badge">운영자 전용</span>
+      </div>
+      {loading ? (
+        <div className="empty-state compact">보스 기록을 확인하고 있습니다.</div>
+      ) : (
+        <>
+          <div className="boss-absence-tabs" role="tablist" aria-label="보스타임 선택">
+            {bossTypes.map((type) => (
+              <button type="button" role="tab" aria-selected={selectedKey === type.key} className={selectedKey === type.key ? 'active' : ''} key={type.key} onClick={() => setSelectedKey(type.key)}>
+                {type.label}
+              </button>
+            ))}
+          </div>
+          {error && <div className="info-banner warning-banner">{error}</div>}
+          {!bossTypes.length && !error && <div className="empty-state compact">등록된 보스 참여 기록이 없습니다.</div>}
+          {!!bossTypes.length && detailLoading && <div className="empty-state compact">미참여자를 계산하고 있습니다.</div>}
+          {!!bossTypes.length && !detailLoading && (
+            <>
+              <div className="boss-absence-records">
+                {recordDetails.map(({ record, absentMembers }) => (
+                  <details key={record.recordId}>
+                    <summary>
+                      <span>{record.bossDate} {String(record.cutTime || '').slice(0, 5)}</span>
+                      <b>{absentMembers.length}명 미참여</b>
+                    </summary>
+                    <div className="boss-absence-name-list">
+                      {absentMembers.length ? absentMembers.map((candidate) => <span key={candidate.memberId}>{candidate.characterName}</span>) : <p>전원 참여했습니다.</p>}
+                    </div>
+                  </details>
+                ))}
+              </div>
+              <div className="repeat-absence-panel">
+                <div className="section-heading compact">
+                  <h3>2회 이상 미참여</h3>
+                  <span className="result-count">{repeatedAbsences.length}명</span>
+                </div>
+                {repeatedAbsences.length ? repeatedAbsences.map((row) => (
+                  <details key={row.member.memberId || row.member.characterName}>
+                    <summary><b>{row.member.characterName}</b><span>{row.records.length}회</span></summary>
+                    <p>{row.records.map((record) => `${record.bossDate} ${bossAbsenceLabel(record)}`).join(' · ')}</p>
+                  </details>
+                )) : <p className="subtle compact-copy">해당 기간에 2회 이상 미참여한 인원이 없습니다.</p>}
+              </div>
+            </>
+          )}
+        </>
+      )}
+    </section>
   );
 }
 
