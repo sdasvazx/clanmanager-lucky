@@ -428,6 +428,7 @@ const createBatchRowFromSlot = (slot, previous = {}) => ({
   savedRecord: previous.savedRecord || null,
   message: previous.message || '',
   clipboardText: previous.clipboardText || '',
+  inputMode: previous.inputMode === 'absent' ? 'absent' : 'attendee',
 });
 const buildBatchRowsFromActivitySettings = (activities = [], previousRows = []) => {
   const activeActivities = Array.isArray(activities) ? activities.filter((activity) => activity.active !== false) : [];
@@ -3376,12 +3377,32 @@ function Attendance({ member, setPage, mode = 'check' }) {
       acc[item.clanName] = (acc[item.clanName] || 0) + 1;
       return acc;
     }, {});
+  const activeAttendanceMembers = useMemo(
+    () => members.filter((candidate) => candidate.active !== false && normalize(candidate.characterName) !== normalize('미피')),
+    [members]
+  );
+  const resolveBatchParticipants = (row) => {
+    const enteredNames = row.names.filter((item) => item.matched);
+    if (row.inputMode !== 'absent') {
+      return enteredNames.filter((item) => normalize(item.name) !== normalize('미피'));
+    }
+    const absentNames = new Set(enteredNames.map((item) => normalize(item.name)));
+    return activeAttendanceMembers
+      .filter((candidate) => !absentNames.has(normalize(candidate.characterName)))
+      .map((candidate) => ({
+        name: candidate.characterName,
+        matched: true,
+        clanName: canonicalClanName(candidate.guildName || candidate.clanName),
+        positions: [],
+        sources: [],
+      }));
+  };
   const saveBatchRow = async (key) => {
     const row = batchRows.find((item) => item.key === key);
     if (!row) return;
-    const confirmedNames = row.names.filter((item) => item.matched);
+    const confirmedNames = resolveBatchParticipants(row);
     const skippedCount = row.names.filter((item) => !item.matched).length + row.ambiguous.length;
-    if (row.attendanceApplied !== false && !confirmedNames.length) {
+    if (row.attendanceApplied !== false && row.inputMode !== 'absent' && !confirmedNames.length) {
       updateBatchRow(key, { message: '먼저 사진을 넣고 인식해 주세요.' });
       return;
     }
@@ -3406,7 +3427,7 @@ function Attendance({ member, setPage, mode = 'check' }) {
       });
       updateBatchRow(key, {
         savedRecord: saved,
-        message: `${saved.bossName} ${saved.totalCount}명 저장 완료${skippedCount ? ` · 주황색 ${skippedCount}개 제외` : ''}`,
+        message: `${saved.bossName} 참여자 ${saved.totalCount}명 저장 완료${row.inputMode === 'absent' ? ` · 미참여자 ${row.names.filter((item) => item.matched && normalize(item.name) !== normalize('미피')).length}명 제외` : ''}${skippedCount ? ` · 주황색 ${skippedCount}개 제외` : ''}`,
       });
       setMessage(`${saved.bossName} 사진 등록이 완료되었습니다. 참여율 조회에 반영됩니다.${skippedCount ? ` 주황색 ${skippedCount}개는 제외했습니다.` : ''}`);
       await load(1);
@@ -3950,11 +3971,33 @@ function Attendance({ member, setPage, mode = 'check' }) {
             {batchRows.map((row) => {
               const counts = batchClanCounts(row.names);
               const unresolved = row.names.filter((item) => !item.matched).length + row.ambiguous.length;
+              const resolvedParticipantCount = resolveBatchParticipants(row).length;
               return (
                 <div className="boss-batch-row" key={row.key}>
                   <div className="boss-batch-title">
                     <b>{row.title}</b>
                     {row.savedRecord && <span className="saved-pill">저장완료</span>}
+                  </div>
+                  <div className="attendance-input-mode" role="group" aria-label="출석 인원 입력 기준">
+                    <button
+                      type="button"
+                      className={row.inputMode !== 'absent' ? 'active' : ''}
+                      onClick={() => updateBatchRow(row.key, { inputMode: 'attendee', names: [], ambiguous: [], clipboardText: '', savedRecord: null, message: '' })}
+                    >
+                      참여자 입력
+                    </button>
+                    <button
+                      type="button"
+                      className={row.inputMode === 'absent' ? 'active' : ''}
+                      onClick={() => updateBatchRow(row.key, { inputMode: 'absent', names: [], ambiguous: [], clipboardText: '', savedRecord: null, message: '' })}
+                    >
+                      미참여자 입력
+                    </button>
+                    <small>
+                      {row.inputMode === 'absent'
+                        ? `활성 클랜원 ${activeAttendanceMembers.length}명에서 입력한 미참여자를 제외해 참여자를 계산합니다. 미피는 항상 제외됩니다.`
+                        : '입력하거나 인식한 이름을 참여자로 저장합니다. 미피는 항상 제외됩니다.'}
+                    </small>
                   </div>
                   <div className="batch-file-picker">
                     <label className="batch-drop-zone" onDragOver={(event) => event.preventDefault()} onDrop={(event) => dropBatchFiles(row.key, event)}>
@@ -4034,7 +4077,7 @@ function Attendance({ member, setPage, mode = 'check' }) {
                       className="batch-text-import"
                       value={row.clipboardText}
                       onChange={(event) => updateBatchRow(row.key, { clipboardText: event.target.value })}
-                      placeholder={'분대 [탭] 캐릭터명 [탭] 위치 형식을 붙여넣어 주세요.\n예: 1 [탭] 검고냥 [탭] 영원의 땅-3구역'}
+                      placeholder={row.inputMode === 'absent' ? '미참여자 닉네임을 한 줄에 한 명씩 입력해 주세요.' : '분대 [탭] 캐릭터명 [탭] 위치 형식을 붙여넣어 주세요.\n예: 1 [탭] 검고냥 [탭] 영원의 땅-3구역'}
                       rows="3"
                     />
                     <button
@@ -4043,10 +4086,10 @@ function Attendance({ member, setPage, mode = 'check' }) {
                       disabled={row.scanning || !row.clipboardText.trim()}
                       onClick={() => importBatchNamesFromText(row.key, row.clipboardText)}
                     >
-                      명단 적용
+                      {row.inputMode === 'absent' ? '미참여자 적용' : '명단 적용'}
                     </button>
                     <button type="button" className="primary-button no-margin" disabled={row.scanning} onClick={() => saveBatchRow(row.key)}>
-                      인원체크 완료
+                      {row.inputMode === 'absent' ? `참여자 ${resolvedParticipantCount}명 저장` : '인원체크 완료'}
                     </button>
                     {row.savedRecord && (
                       <button type="button" className="roster-button roulette-button" onClick={() => copyRouletteNames(row.savedRecord)}>
@@ -4057,7 +4100,8 @@ function Attendance({ member, setPage, mode = 'check' }) {
                   {(row.names.length > 0 || row.ambiguous.length > 0 || row.message) && (
                     <div className="batch-result">
                       <div className="batch-counts">
-                        <span className="clan-badge total">전체 {row.names.length}명</span>
+                        <span className="clan-badge total">{row.inputMode === 'absent' ? '입력 미참여자' : '전체'} {row.names.length}명</span>
+                        {row.inputMode === 'absent' && <span className="clan-badge participant-total">저장 참여자 {resolvedParticipantCount}명</span>}
                         {clanDisplayOrder.map((clan) =>
                           counts[clan] ? (
                             <span className={`clan-badge ${normalize(clan)}`} key={clan}>
@@ -4069,8 +4113,8 @@ function Attendance({ member, setPage, mode = 'check' }) {
                       </div>
                       <div className="batch-manual-add">
                         <div>
-                          <b>빠진 인원 직접 추가</b>
-                          <small>OCR이 한 명을 놓쳤을 때 등록된 닉네임을 검색해서 바로 명단에 넣을 수 있습니다.</small>
+                          <b>{row.inputMode === 'absent' ? '미참여자 직접 추가' : '빠진 인원 직접 추가'}</b>
+                          <small>{row.inputMode === 'absent' ? '참여하지 않은 활성 클랜원의 닉네임을 검색해서 추가하세요.' : 'OCR이 한 명을 놓쳤을 때 등록된 닉네임을 검색해서 바로 명단에 넣을 수 있습니다.'}</small>
                         </div>
                         <div className="batch-manual-controls">
                           <input

@@ -1318,6 +1318,46 @@
   font-size: 1.05rem;
 }
 
+.attendance-input-mode {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid #dbe7f5;
+  border-radius: 12px;
+  background: #f8fbff;
+}
+
+.attendance-input-mode button {
+  border: 1px solid #bfdbfe;
+  border-radius: 10px;
+  padding: 9px 15px;
+  background: #fff;
+  color: #475569;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.attendance-input-mode button.active {
+  border-color: #2563eb;
+  background: #2563eb;
+  color: #fff;
+}
+
+.attendance-input-mode small {
+  flex: 1 1 360px;
+  color: #52647e;
+  line-height: 1.45;
+}
+
+.clan-badge.participant-total {
+  border-color: #86efac;
+  background: #dcfce7;
+  color: #166534;
+}
+
 .saved-pill {
   padding: 4px 8px;
   border-radius: 999px;
@@ -4123,6 +4163,15 @@
 
   .boss-batch-title {
     font-size: 1.1rem;
+  }
+
+  .attendance-input-mode {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .attendance-input-mode small {
+    grid-column: 1 / -1;
   }
 
   .batch-heading-actions,
