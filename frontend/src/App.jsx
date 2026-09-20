@@ -1275,7 +1275,7 @@ function AuthScreen({ onLogin }) {
       <section className="auth-card light-auth">
         <div className="auth-mark">C</div>
         <p className="auth-kicker">CLAN MANAGER</p>
-        <h1>{isRegister ? '운좋은에 합류하기' : '운좋은'}</h1>
+        <h1>{isRegister ? '던컨2에 합류하기' : '던컨2'}</h1>
         <p>캐릭터 정보와 클랜 활동을 한곳에서 관리하세요.</p>
         <form onSubmit={submit}>
           <label>
@@ -1408,9 +1408,9 @@ function Shell({ member, page, setPage, onLogout, children, favorites = [], togg
   const totalAdminAlerts = adminAlerts.registrations.length + adminAlerts.distributionClaims.length + adminAlerts.itemRequests.length;
   useEffect(() => {
     if (member.role !== 'ADMIN') return undefined;
-    document.title = totalAdminAlerts ? `(${totalAdminAlerts}) 운좋은` : '운좋은';
+    document.title = totalAdminAlerts ? `(${totalAdminAlerts}) 던컨2` : '던컨2';
     return () => {
-      document.title = '운좋은';
+      document.title = '던컨2';
     };
   }, [member.role, totalAdminAlerts]);
   const openAlertPage = (target) => {
@@ -9972,7 +9972,7 @@ export default function App() {
       <main className="auth-page">
         <section className="auth-card light-auth">
           <div className="auth-mark">C</div>
-          <h1>운좋은</h1>
+          <h1>던컨2</h1>
           <p>자동 로그인 확인 중...</p>
         </section>
       </main>
