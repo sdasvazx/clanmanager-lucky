@@ -38,6 +38,12 @@ public class Member {
     @Column(length = 50)
     private String characterClass;
 
+    @Column(name = "myth_status", nullable = false, length = 10, columnDefinition = "varchar(10) default 'X'")
+    private String mythStatus;
+
+    @Column(name = "enoch_enabled", nullable = false, columnDefinition = "boolean default false")
+    private Boolean enochEnabled;
+
     private Integer level;
 
     @Column(name = "member_rank", length = 30)
@@ -61,6 +67,8 @@ public class Member {
     public void prePersist() {
         this.combatPower = this.combatPower == null ? 0 : this.combatPower;
         this.level = this.level == null ? 0 : this.level;
+        this.mythStatus = normalizeMythStatus(this.mythStatus);
+        this.enochEnabled = this.enochEnabled == null ? false : this.enochEnabled;
         this.role = this.role == null ? MemberRole.MEMBER : this.role;
         this.active = this.active == null ? true : this.active;
         this.mustChangePassword = this.mustChangePassword == null ? false : this.mustChangePassword;
@@ -70,6 +78,12 @@ public class Member {
 
     @PreUpdate
     public void preUpdate() {
+        this.mythStatus = normalizeMythStatus(this.mythStatus);
+        this.enochEnabled = this.enochEnabled == null ? false : this.enochEnabled;
         this.updatedAt = LocalDateTime.now();
+    }
+
+    private String normalizeMythStatus(String value) {
+        return "쌍신화".equals(value) || "외신화".equals(value) ? value : "X";
     }
 }

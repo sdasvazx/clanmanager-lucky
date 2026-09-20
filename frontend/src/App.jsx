@@ -50,7 +50,7 @@ const roleLabel = (role) => (role === 'ADMIN' ? '운영자' : role === 'PHOTOGRA
 const adminCards = [
   ['✓', '출석체크', 'mint', 'attendance'],
   ['♕', '출석보스 설정', 'red', 'activity-settings'],
-  ['♙', '클랜원/전투력 관리', 'blue', 'member-admin'],
+  ['♙', '클랜원전투관리', 'blue', 'member-admin'],
   ['⚙', '가중치 설정', 'orange', 'activity-settings'],
   ['✿', '기타 설정', 'indigo', 'general-settings'],
   ['▣', '스펙/장비 수정기록', 'amber', 'spec-history'],
@@ -61,7 +61,7 @@ const adminCards = [
 ];
 
 const favoriteStorageKey = (member) => `clanmanager:favorites:${member?.memberId || 'guest'}`;
-const pageMetaList = [...menu.map(([id, icon, label]) => ({ id, icon, label })), { id: 'attendance', icon: '✓', label: '출석체크' }, { id: 'participation', icon: '가', label: '참여율/가중치 설정' }, { id: 'activity-settings', icon: '보', label: '출석보스 설정' }, { id: 'member-admin', icon: '관', label: '클랜원/전투력 관리' }, { id: 'pinball', icon: '핀', label: '핀볼' }, { id: 'spec-history', icon: '스', label: '스펙/장비 기록' }, { id: 'roster', icon: '스', label: '출석 OCR' }, { id: 'item-request', icon: '신', label: '아이템 신청' }, { id: 'all-items', icon: '템', label: '전체아이템' }, { id: 'general-settings', icon: '설', label: '기타 설정' }];
+const pageMetaList = [...menu.map(([id, icon, label]) => ({ id, icon, label })), { id: 'attendance', icon: '✓', label: '출석체크' }, { id: 'participation', icon: '가', label: '참여율/가중치 설정' }, { id: 'activity-settings', icon: '보', label: '출석보스 설정' }, { id: 'member-admin', icon: '관', label: '클랜원전투관리' }, { id: 'pinball', icon: '핀', label: '핀볼' }, { id: 'spec-history', icon: '스', label: '스펙/장비 기록' }, { id: 'roster', icon: '스', label: '출석 OCR' }, { id: 'item-request', icon: '신', label: '아이템 신청' }, { id: 'all-items', icon: '템', label: '전체아이템' }, { id: 'general-settings', icon: '설', label: '기타 설정' }];
 const pageMetaMap = new Map(pageMetaList.map((item) => [item.id, item]));
 const pageMeta = (id) => pageMetaMap.get(id) || { id, icon: '★', label: id };
 const readFavorites = (member) => {
@@ -8418,6 +8418,8 @@ function Admin({ member, setPage, onMemberUpdate, memberOnly = false, favorites 
     initialPassword: '112200',
     guildName: '',
     characterClass: '',
+    mythStatus: 'X',
+    enochEnabled: false,
     level: '',
     combatPower: '',
     rank: '',
@@ -8428,6 +8430,8 @@ function Admin({ member, setPage, onMemberUpdate, memberOnly = false, favorites 
     characterName: '',
     guildName: '',
     characterClass: '',
+    mythStatus: 'X',
+    enochEnabled: false,
     level: '',
     combatPower: '',
     rank: '',
@@ -8515,6 +8519,8 @@ function Admin({ member, setPage, onMemberUpdate, memberOnly = false, favorites 
     characterName: targetMember.characterName ?? '',
     guildName: targetMember.guildName ?? '',
     characterClass: targetMember.characterClass ?? '',
+    mythStatus: targetMember.mythStatus ?? 'X',
+    enochEnabled: targetMember.enochEnabled ?? false,
     level: targetMember.level ?? 0,
     combatPower: targetMember.combatPower ?? 0,
     rank: targetMember.rank ?? '',
@@ -8579,7 +8585,7 @@ function Admin({ member, setPage, onMemberUpdate, memberOnly = false, favorites 
       members.filter((row) => {
         const keyword = normalize(memberFilters.keyword);
         const rowStatus = row.active ? row.status || '활성' : '비활성';
-        const matchesKeyword = !keyword || [row.characterName, row.guildName, row.characterClass, row.rank, row.status, roleLabel(row.role), row.active ? '활성' : '비활성', row.combatPower, row.level].some((value) => normalize(value).includes(keyword));
+        const matchesKeyword = !keyword || [row.characterName, row.guildName, row.characterClass, row.mythStatus, row.enochEnabled ? 'O' : 'X', roleLabel(row.role), row.combatPower].some((value) => normalize(value).includes(keyword));
         const matchesClan = memberFilters.clan === 'all' || canonicalClanName(row.guildName) === memberFilters.clan;
         const matchesClass = memberFilters.characterClass === 'all' || (row.characterClass || '') === memberFilters.characterClass;
         const combatPower = Number(row.combatPower || 0);
@@ -8620,8 +8626,8 @@ function Admin({ member, setPage, onMemberUpdate, memberOnly = false, favorites 
       const safeText = /^[=+\-@]/.test(text) ? `\t${text}` : text;
       return /[",\n]/.test(safeText) ? `"${safeText.replace(/"/g, '""')}"` : safeText;
     };
-    const headers = ['No.', '닉네임', '클랜', '클래스', '레벨', '전투력', '직급', '상태', '권한', '가입일'];
-    const rows = filteredMembers.map((row, index) => [index + 1, row.characterName, row.guildName || '', row.characterClass || '', row.level ?? '', row.combatPower ?? 0, row.rank || '', row.active ? row.status || '활성' : '비활성', roleLabel(row.role), row.createdAt ? new Date(row.createdAt).toLocaleDateString('ko-KR') : '']);
+    const headers = ['No.', '닉네임', '길드', '클래스', '신화여부', '에노크여부', '전투력', '권한', '가입일'];
+    const rows = filteredMembers.map((row, index) => [index + 1, row.characterName, row.guildName || '', row.characterClass || '', row.mythStatus || 'X', row.enochEnabled ? 'O' : 'X', row.combatPower ?? 0, roleLabel(row.role), row.createdAt ? new Date(row.createdAt).toLocaleDateString('ko-KR') : '']);
     const csv = `\uFEFF${[headers, ...rows].map((row) => row.map(escapeCsvCell).join(',')).join('\r\n')}`;
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -8696,6 +8702,26 @@ function Admin({ member, setPage, onMemberUpdate, memberOnly = false, favorites 
       await request(`/members/${targetMember.memberId}/role?role=${role}&adminMemberId=${member.memberId}`, { method: 'PATCH' });
       await load();
       setMessage(`${targetMember.characterName}의 권한을 ${roleLabel(role)}로 변경했습니다.`);
+    } catch (err) {
+      setMessage(err.message);
+    } finally {
+      setLoadingId(null);
+    }
+  };
+
+  const changeCombatOptions = async (targetMember, patch) => {
+    setLoadingId(`combat-${targetMember.memberId}`);
+    setMessage('');
+    try {
+      await request(`/members/${targetMember.memberId}/combat-options?adminMemberId=${member.memberId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          mythStatus: patch.mythStatus ?? targetMember.mythStatus ?? 'X',
+          enochEnabled: patch.enochEnabled ?? targetMember.enochEnabled ?? false,
+        }),
+      });
+      await load();
+      setMessage(`${targetMember.characterName}의 신화/에노크 정보를 변경했습니다.`);
     } catch (err) {
       setMessage(err.message);
     } finally {
@@ -8799,8 +8825,8 @@ function Admin({ member, setPage, onMemberUpdate, memberOnly = false, favorites 
   return (
     <>
       <div className="page-title">
-        <h1>클랜원/전투력 관리</h1>
-        <p>클랜원 정보, 전투력, 비밀번호, 권한, 삭제 여부를 관리합니다.</p>
+        <h1>클랜원전투관리</h1>
+        <p>클랜원의 신화·에노크 여부, 전투력, 비밀번호와 권한을 관리합니다.</p>
       </div>
       <button className="outline-button no-margin" onClick={() => setPage('admin')}>
         ← 관리자 설정으로
@@ -8927,8 +8953,8 @@ function Admin({ member, setPage, onMemberUpdate, memberOnly = false, favorites 
       <section className="white-card role-card">
         <div className="section-heading">
           <div>
-            <h2>클랜원 관리</h2>
-            <p className="subtle">닉네임, 길드, 클래스, 레벨, 전투력, 상태, 권한을 관리합니다.</p>
+            <h2>클랜원전투관리</h2>
+            <p className="subtle">닉네임, 길드, 클래스, 신화·에노크 여부, 전투력과 권한을 관리합니다.</p>
           </div>
           <div className="bulk-edit-actions">
             <span className="result-count">
@@ -8971,7 +8997,7 @@ function Admin({ member, setPage, onMemberUpdate, memberOnly = false, favorites 
                   keyword: event.target.value,
                 })
               }
-              placeholder="닉네임, 직급, 전투력 검색"
+              placeholder="닉네임, 클래스, 전투력 검색"
             />
           </label>
           <label>
@@ -9060,10 +9086,9 @@ function Admin({ member, setPage, onMemberUpdate, memberOnly = false, favorites 
                 <th>닉네임</th>
                 <th>길드</th>
                 <SortableHeader label="클래스" field="characterClass" sortKey={memberSortKey} sortDirection={memberSortDirection} onSort={toggleMemberSort} />
-                <th>레벨</th>
+                <th>신화여부</th>
+                <th>에노크여부</th>
                 <SortableHeader label="전투력" field="combatPower" sortKey={memberSortKey} sortDirection={memberSortDirection} onSort={toggleMemberSort} />
-                <th>직급</th>
-                <th>상태</th>
                 <th>권한</th>
                 <th>정보수정</th>
                 <th>비밀번호</th>
@@ -9138,23 +9163,27 @@ function Admin({ member, setPage, onMemberUpdate, memberOnly = false, favorites 
                         )}
                       </td>
                       <td>
-                        {bulkEditing ? (
-                          <input
-                            className="bulk-table-input small"
-                            type="number"
-                            min="0"
-                            value={bulkForm.level}
-                            onChange={(e) =>
-                              updateBulkEdit(row.memberId, {
-                                level: e.target.value,
-                              })
-                            }
-                          />
-                        ) : row.level ? (
-                          `Lv.${row.level}`
-                        ) : (
-                          '-'
-                        )}
+                        <select
+                          value={row.mythStatus || 'X'}
+                          disabled={bulkEditing || loadingId === `combat-${row.memberId}`}
+                          onChange={(event) => changeCombatOptions(row, { mythStatus: event.target.value })}
+                          aria-label={`${row.characterName} 신화여부`}
+                        >
+                          <option value="쌍신화">쌍신화</option>
+                          <option value="외신화">외신화</option>
+                          <option value="X">X</option>
+                        </select>
+                      </td>
+                      <td>
+                        <select
+                          value={row.enochEnabled ? 'O' : 'X'}
+                          disabled={bulkEditing || loadingId === `combat-${row.memberId}`}
+                          onChange={(event) => changeCombatOptions(row, { enochEnabled: event.target.value === 'O' })}
+                          aria-label={`${row.characterName} 에노크여부`}
+                        >
+                          <option value="O">O</option>
+                          <option value="X">X</option>
+                        </select>
                       </td>
                       <td>
                         {bulkEditing ? (
@@ -9172,52 +9201,6 @@ function Admin({ member, setPage, onMemberUpdate, memberOnly = false, favorites 
                           />
                         ) : (
                           formatNumber(row.combatPower)
-                        )}
-                      </td>
-                      <td>
-                        {bulkEditing ? (
-                          <input
-                            className="bulk-table-input"
-                            value={bulkForm.rank}
-                            onChange={(e) =>
-                              updateBulkEdit(row.memberId, {
-                                rank: e.target.value,
-                              })
-                            }
-                          />
-                        ) : (
-                          row.rank || '-'
-                        )}
-                      </td>
-                      <td>
-                        {bulkEditing ? (
-                          <>
-                            <input
-                              className="bulk-table-input"
-                              value={bulkForm.status}
-                              onChange={(e) =>
-                                updateBulkEdit(row.memberId, {
-                                  status: e.target.value,
-                                })
-                              }
-                            />
-                            <select
-                              className="bulk-table-input mini"
-                              value={bulkForm.active ? 'true' : 'false'}
-                              onChange={(e) =>
-                                updateBulkEdit(row.memberId, {
-                                  active: e.target.value === 'true',
-                                })
-                              }
-                            >
-                              <option value="true">활성</option>
-                              <option value="false">비활성</option>
-                            </select>
-                          </>
-                        ) : row.active ? (
-                          row.status || '활성'
-                        ) : (
-                          '비활성'
                         )}
                       </td>
                       <td>
@@ -9257,7 +9240,7 @@ function Admin({ member, setPage, onMemberUpdate, memberOnly = false, favorites 
                     </tr>
                     {!bulkEditing && editId === row.memberId && (
                       <tr className="member-edit-row">
-                        <td colSpan="12">
+                        <td colSpan="11">
                           <form className="admin-edit-form inline-member-edit" onSubmit={saveProfile}>
                             <label>
                               닉네임

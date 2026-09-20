@@ -170,6 +170,8 @@ public class MemberController {
         member.setCombatPower(request.getCombatPower() == null ? 0 : request.getCombatPower());
         member.setGuildName(blankToNull(request.getGuildName()));
         member.setCharacterClass(blankToNull(request.getCharacterClass()));
+        member.setMythStatus(normalizeMythStatus(request.getMythStatus()));
+        member.setEnochEnabled(Boolean.TRUE.equals(request.getEnochEnabled()));
         member.setLevel(request.getLevel() == null ? 0 : request.getLevel());
         member.setRank(blankToNull(request.getRank()));
         member.setStatus(blankToNull(request.getStatus()));
@@ -227,6 +229,8 @@ public class MemberController {
         member.setCombatPower(request.getCombatPower() == null ? 0 : request.getCombatPower());
         member.setGuildName(blankToNull(request.getGuildName()));
         member.setCharacterClass(blankToNull(request.getCharacterClass()));
+        member.setMythStatus(normalizeMythStatus(request.getMythStatus()));
+        member.setEnochEnabled(Boolean.TRUE.equals(request.getEnochEnabled()));
         member.setLevel(request.getLevel() == null ? 0 : request.getLevel());
         member.setRank(blankToNull(request.getRank()));
         member.setStatus(blankToNull(request.getStatus()));
@@ -526,6 +530,27 @@ public class MemberController {
         );
     }
 
+    @PatchMapping("/{memberId}/combat-options")
+    public Member updateCombatOptions(
+            @PathVariable Long memberId,
+            @RequestParam Long adminMemberId,
+            @RequestBody CombatOptionsRequest request
+    ) {
+        Member admin = findMember(adminMemberId);
+        if (admin.getRole() != MemberRole.ADMIN) {
+            throw new SecurityException("운영자만 전투 정보를 수정할 수 있습니다.");
+        }
+
+        Member target = findMember(memberId);
+        target.setMythStatus(normalizeMythStatus(request.getMythStatus()));
+        target.setEnochEnabled(Boolean.TRUE.equals(request.getEnochEnabled()));
+        return memberRepository.save(target);
+    }
+
+    private String normalizeMythStatus(String value) {
+        return "쌍신화".equals(value) || "외신화".equals(value) ? value : "X";
+    }
+
     private Member findMember(Long memberId) {
         return memberRepository.findById(memberId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다."));
@@ -609,6 +634,8 @@ public class MemberController {
         private String guildName;
         @Size(max = 50, message = "클래스는 50자 이하여야 합니다.")
         private String characterClass;
+        private String mythStatus;
+        private Boolean enochEnabled;
         private Integer level;
         @Size(max = 30, message = "직급은 30자 이하여야 합니다.")
         private String rank;
@@ -642,12 +669,21 @@ public class MemberController {
         private String guildName;
         @Size(max = 50, message = "클래스는 50자 이하여야 합니다.")
         private String characterClass;
+        private String mythStatus;
+        private Boolean enochEnabled;
         private Integer level;
         @Size(max = 30, message = "직급은 30자 이하여야 합니다.")
         private String rank;
         @Size(max = 30, message = "상태는 30자 이하여야 합니다.")
         private String status;
         private Boolean active;
+    }
+
+    @Getter
+    @Setter
+    public static class CombatOptionsRequest {
+        private String mythStatus;
+        private Boolean enochEnabled;
     }
 
     @Getter
