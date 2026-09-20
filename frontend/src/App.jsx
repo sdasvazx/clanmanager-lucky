@@ -226,7 +226,7 @@ const readRosterSettings = () => {
   try {
     const parsed = JSON.parse(localStorage.getItem(rosterSettingStorageKey) || '{}');
     return {
-      clans: defaultRosterSettings.clans,
+      clans: normalizeSettingItems(parsed.clans, defaultRosterSettings.clans),
       classes: normalizeSettingItems(parsed.classes, defaultRosterSettings.classes),
     };
   } catch {
@@ -9542,7 +9542,7 @@ function GeneralSettingsPage({ setPage }) {
 
   const persist = (next) => {
     const cleaned = {
-      clans: defaultRosterSettings.clans,
+      clans: normalizeSettingItems(next.clans, defaultRosterSettings.clans),
       classes: normalizeSettingItems(next.classes, defaultRosterSettings.classes),
     };
     setDraft(cleaned);
@@ -9580,6 +9580,8 @@ function GeneralSettingsPage({ setPage }) {
       setMessage('목록은 최소 1개 이상 필요합니다.');
       return;
     }
+    const target = draft[type].find((item) => item.id === id);
+    if (!window.confirm(`${target?.name || '선택한 항목'}을(를) 목록에서 삭제할까요? 기존 클랜원 정보는 변경되지 않습니다.`)) return;
     persist({ ...draft, [type]: draft[type].filter((item) => item.id !== id) });
     setMessage('삭제되었습니다.');
   };
@@ -9640,18 +9642,9 @@ function GeneralSettingsPage({ setPage }) {
         </button>
       </div>
       {message && <p className="vault-message">{message}</p>}
-      <div className="info-banner">기타설정은 선택 화면이 아니라 목록 관리 화면입니다. 클래스는 아래에서 추가/수정한 뒤 클랜원 관리나 마이페이지의 클래스 선택창에서 고르면 됩니다.</div>
+      <div className="info-banner">클랜과 클래스를 추가·수정·삭제할 수 있습니다. 기존 클랜원이 속한 클랜을 목록에서 삭제해도 해당 클랜원의 저장 정보는 유지됩니다.</div>
       <div className="roster-settings-grid">
-        <section className="white-card roster-setting-card">
-          <h2>클랜 목록</h2>
-          <div className="info-banner">운좋은 전용 서비스이므로 클랜은 운좋은 하나로 고정됩니다.</div>
-          <div className="setting-list">
-            <div className="setting-list-row">
-              <span className="setting-preview-pill" style={{ background: defaultRosterSettings.clans[0].color }}>운좋은</span>
-              <b>운좋은</b>
-            </div>
-          </div>
-        </section>
+        {card('clans', '클랜 목록', '클랜명 입력')}
         {card('classes', '클래스 목록', '클래스명 입력')}
       </div>
     </>
