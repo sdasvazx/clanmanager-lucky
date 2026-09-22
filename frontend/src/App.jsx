@@ -8459,7 +8459,9 @@ function Admin({ member, setPage, onMemberUpdate, memberOnly = false, favorites 
     role: 'all',
   });
   const [rosterSettings] = useRosterSettings();
-  const managedClanOptions = rosterSettings.clans.map((item) => item.name);
+  const managedClanOptions = Array.from(
+    new Set([...(rosterSettings.clans || []).map((item) => item.name), ...members.map((row) => row.guildName)].filter(Boolean))
+  );
   const managedClassOptions = rosterSettings.classes.map((item) => item.name);
   const load = async () => {
     try {
@@ -8577,7 +8579,13 @@ function Admin({ member, setPage, onMemberUpdate, memberOnly = false, favorites 
       const edited = bulkEdits[row.memberId];
       return edited && !isSameProfile(formFromMember(row), edited);
     });
-  const memberClanOptions = useMemo(() => Array.from(new Set(members.map((row) => canonicalClanName(row.guildName)).filter(Boolean))).sort(), [members]);
+  const memberClanOptions = useMemo(
+    () =>
+      Array.from(
+        new Set([...(rosterSettings.clans || []).map((item) => item.name), ...members.map((row) => canonicalClanName(row.guildName))].filter(Boolean))
+      ).sort((a, b) => a.localeCompare(b, 'ko-KR')),
+    [members, rosterSettings.clans]
+  );
   const memberClassOptions = useMemo(() => Array.from(new Set([...rosterSettings.classes.map((item) => item.name), ...members.map((row) => row.characterClass || '')].filter(Boolean))).sort(), [members, rosterSettings.classes]);
   const memberStatusOptions = useMemo(() => Array.from(new Set(members.map((row) => (row.active ? row.status || '활성' : '비활성')).filter(Boolean))).sort(), [members]);
   const filteredMemberRows = useMemo(
