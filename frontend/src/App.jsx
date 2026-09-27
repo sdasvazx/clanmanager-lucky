@@ -7724,7 +7724,7 @@ function CollectionPage({ member }) {
         <div className="section-heading">
           <div>
             <h2>지급현황</h2>
-            <p className="subtle">일반 클랜원은 본인의 잠기지 않은 항목만 변경할 수 있습니다. 🔒 항목은 운영자만 수정할 수 있습니다.</p>
+            <p className="subtle">{selfEditWindow ? '수정 기간 중에는 잠금·완료 여부와 관계없이 본인 항목만 변경할 수 있습니다. 운영자는 모든 클랜원의 항목을 수정할 수 있습니다.' : '일반 클랜원은 본인의 잠기지 않은 미완료 항목만 변경할 수 있습니다. 잠금 해제와 완료 취소는 운영진에게 문의해 주세요.'}</p>
             {isAdmin && <span className="admin-badge">전투력·잠금 기능 운영자 전용</span>}
           </div>
           <span className="result-count">
