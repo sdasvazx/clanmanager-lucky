@@ -8,3 +8,7 @@ spring:
     hibernate:
       ddl-auto: create-drop
     show-sql: false
+
+auth:
+  jwt:
+    secret: test-only-secret-for-local-tests-at-least-32-characters

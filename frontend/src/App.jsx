@@ -7373,6 +7373,30 @@ function BiddingPage({ member }) {
 }
 
 function CollectionPage({ member }) {
+  const [editWindow, setEditWindow] = useState(null);
+  const [windowClock, setWindowClock] = useState(Date.now());
+  const [openingWindow, setOpeningWindow] = useState(false);
+  const acceptEditWindow = (value) => setEditWindow({
+    ...value,
+    localDeadline: Date.now() + Math.max(0, Date.parse(value.expiresAt) - Date.parse(value.serverNow)),
+  });
+  const refreshEditWindow = () => request('/management/collection-edit-window')
+    .then(acceptEditWindow).catch(() => setEditWindow(null));
+  useEffect(() => {
+    refreshEditWindow();
+    const poll = setInterval(refreshEditWindow, 30000);
+    const clock = setInterval(() => setWindowClock(Date.now()), 1000);
+    return () => { clearInterval(poll); clearInterval(clock); };
+  }, []);
+  const selfEditWindow = Boolean(editWindow?.active && windowClock < editWindow.localDeadline);
+  const openEditWindow = async () => {
+    setOpeningWindow(true);
+    try {
+      acceptEditWindow(await request('/management/collection-edit-window', { method: 'POST' }));
+      setMessage('본인 스킬 수정 기간을 24시간 동안 열었습니다. 종료 후 기존 제한이 자동 적용됩니다.');
+    } catch (err) { setMessage(err.message); }
+    finally { setOpeningWindow(false); }
+  };
   const [data, setData] = useState({
     items: [],
     members: [],
@@ -7504,7 +7528,7 @@ function CollectionPage({ member }) {
       setMessage('본인의 컬렉템 지급 상태만 수정할 수 있습니다.');
       return;
     }
-    if (!isAdmin && existingStatus?.locked) {
+    if (!isAdmin && !selfEditWindow && existingStatus?.locked) {
       setMessage('운영자가 잠근 항목은 수정할 수 없습니다.');
       return;
     }
@@ -7612,7 +7636,7 @@ function CollectionPage({ member }) {
   };
   const toggleCollectionStatus = (targetMember, item) => {
     const { state } = collectionCell(targetMember, item);
-    if (!isAdmin && state === '완료') {
+    if (!isAdmin && !selfEditWindow && state === '완료') {
       setMessage('완료한 항목을 미완료로 되돌리려면 운영진에게 문의해 주세요.');
       return;
     }
@@ -7677,6 +7701,10 @@ function CollectionPage({ member }) {
       <div className="page-title">
         <h1>컬렉템 지급현황</h1>
         <p>컬렉션/스킬 지급 여부를 체크하고, 누가 언제 수정했는지 로그로 남깁니다.</p>
+        {selfEditWindow && <p role="status">본인 스킬 수정 기간: {new Date(editWindow.expiresAt).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })} (한국시간)까지. 본인 항목의 완료·미완료를 수정할 수 있으며 종료 후 기존 제한이 자동 적용됩니다.</p>}
+        {isAdmin && <button disabled={openingWindow || selfEditWindow} onClick={openEditWindow}>
+          {selfEditWindow ? '본인 수정 기간 진행 중' : openingWindow ? '처리 중...' : '본인 스킬 수정 24시간 열기'}
+        </button>}
       </div>
       <section className="white-card collection-toolbar">
         <div>
@@ -7856,7 +7884,7 @@ function CollectionPage({ member }) {
                     {visibleItems.map((item) => {
                       const { key, status, state } = collectionCell(targetMember, item);
                       const done = state === '완료';
-                      const canEditStatus = isAdmin || (Number(targetMember.memberId) === Number(member.memberId) && !done && !status?.locked);
+                      const canEditStatus = isAdmin || (Number(targetMember.memberId) === Number(member.memberId) && (selfEditWindow || (!done && !status?.locked)));
                       return (
                         <td key={key}>
                           <div className="collection-cell-actions">
@@ -7865,7 +7893,9 @@ function CollectionPage({ member }) {
                               className={`collection-status-cell ${done ? 'complete' : 'incomplete'} ${status?.locked ? 'locked' : ''}`}
                               disabled={!canEditStatus || savingCell === key}
                               title={
-                                status?.locked
+                                selfEditWindow && Number(targetMember.memberId) === Number(member.memberId)
+                                  ? '본인 수정 기간: 완료·미완료 변경 가능'
+                                  : status?.locked
                                   ? '운영자가 잠근 항목입니다.'
                                   : done && !isAdmin
                                     ? '완료 취소는 운영진에게 문의해 주세요.'

@@ -2,6 +2,7 @@ package com.clanmanager.clanmanager.controller;
 
 import com.clanmanager.clanmanager.entity.*;
 import com.clanmanager.clanmanager.repository.*;
+import com.clanmanager.clanmanager.service.CollectionEditWindowService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -34,6 +35,21 @@ public class ManagementRecordController {
     private final CollectionHistoryRepository collectionHistoryRepository;
     private final ItemRequestRepository itemRequestRepository;
     private final MemberRepository memberRepository;
+    private final CollectionEditWindowService collectionEditWindowService;
+
+    @GetMapping("/collection-edit-window")
+    public CollectionEditWindowService.WindowStatus getCollectionEditWindow() {
+        return collectionEditWindowService.status();
+    }
+
+    @PostMapping("/collection-edit-window")
+    public CollectionEditWindowService.WindowStatus openCollectionEditWindow(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new SecurityException("운영자 로그인이 필요합니다.");
+        }
+        Member actor = validateAdmin(Long.valueOf(authentication.getName()));
+        return collectionEditWindowService.openFor24Hours(actor.getMemberId());
+    }
 
     private static final List<String> ALL_ITEM_CLANS = List.of("운좋은");
 
@@ -329,6 +345,9 @@ public class ManagementRecordController {
         CollectionItem item = collectionItemRepository.findById(request.getItemId())
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 컬렉템 항목입니다."));
         String nextState = cleanRequired(request.getState(), "상태를 선택해 주세요.");
+        if (!List.of("완료", "미완료").contains(nextState)) {
+            throw new IllegalArgumentException("완료 또는 미완료를 선택해 주세요.");
+        }
         CollectionStatus status = collectionStatusRepository.findByMemberAndItem(target, item)
                 .orElseGet(() -> CollectionStatus.builder()
                         .member(target)
@@ -336,13 +355,14 @@ public class ManagementRecordController {
                         .state("미완료")
                         .build());
         String previousState = status.getCollectionStatusId() == null ? "미완료" : status.getState();
-        if (actor.getRole() != MemberRole.ADMIN && !"완료".equals(nextState)) {
+        boolean selfEditWindow = collectionEditWindowService.status().active();
+        if (actor.getRole() != MemberRole.ADMIN && !selfEditWindow && !"완료".equals(nextState)) {
             throw new SecurityException("완료한 항목의 취소는 운영진에게 문의해 주세요.");
         }
-        if (actor.getRole() != MemberRole.ADMIN && "완료".equals(previousState)) {
+        if (actor.getRole() != MemberRole.ADMIN && !selfEditWindow && "완료".equals(previousState)) {
             throw new SecurityException("이미 완료한 항목은 운영자만 수정할 수 있습니다.");
         }
-        if (actor.getRole() != MemberRole.ADMIN && Boolean.TRUE.equals(status.getLocked())) {
+        if (actor.getRole() != MemberRole.ADMIN && !selfEditWindow && Boolean.TRUE.equals(status.getLocked())) {
             throw new SecurityException("운영자가 잠근 항목은 수정할 수 없습니다.");
         }
         status.setState(nextState);

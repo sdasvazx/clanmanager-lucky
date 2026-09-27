@@ -5,6 +5,10 @@ import com.clanmanager.clanmanager.dto.RegisterRequestDto;
 import com.clanmanager.clanmanager.entity.Member;
 import com.clanmanager.clanmanager.entity.MemberRole;
 import com.clanmanager.clanmanager.repository.MemberRepository;
+import com.clanmanager.clanmanager.repository.RefreshTokenRepository;
+import com.clanmanager.clanmanager.security.JwtTokenProvider;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.mock.web.MockHttpServletResponse;
 import com.clanmanager.clanmanager.security.PasswordSupport;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -35,7 +39,7 @@ class AuthControllerTest {
         request.setPassword(PasswordSupport.DEFAULT_INITIAL_PASSWORD);
         request.setCombatPower(1_000_000);
 
-        Map<String, Object> response = new AuthController(repository).register(request);
+        Map<String, Object> response = new AuthController(repository, mock(RefreshTokenRepository.class), mock(JwtTokenProvider.class)).register(request);
 
         ArgumentCaptor<Member> memberCaptor = ArgumentCaptor.forClass(Member.class);
         verify(repository).save(memberCaptor.capture());
@@ -63,9 +67,10 @@ class AuthControllerTest {
         request.setCharacterName("테스트");
         request.setPassword(PasswordSupport.DEFAULT_INITIAL_PASSWORD);
 
-        Map<String, Object> response = new AuthController(repository).login(request);
+        var response = new AuthController(repository, mock(RefreshTokenRepository.class), mock(JwtTokenProvider.class))
+                .login(request, new MockHttpServletRequest(), new MockHttpServletResponse()).getBody();
 
-        assertThat(response.get("mustChangePassword")).isEqualTo(true);
+        assertThat(response.mustChangePassword()).isTrue();
         assertThat(member.getMustChangePassword()).isTrue();
         verify(repository).save(member);
     }
