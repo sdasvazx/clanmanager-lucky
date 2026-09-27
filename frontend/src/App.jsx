@@ -2158,7 +2158,7 @@ function MyInfo({ member, setPage }) {
   );
 }
 
-function ProfileCard({ member, info, incompleteCollections = [], onCompleteCollection, completingCollectionId, participationSummary, bossRecords = [], bossHistory = [], period = getParticipationPeriod(getCurrentParticipationPeriodIndex()), periodHistory = [], setPage }) {
+function ProfileCard({ member, info, incompleteCollections = [], onCompleteCollection, completingCollectionId, collectionMessage, participationSummary, bossRecords = [], bossHistory = [], period = getParticipationPeriod(getCurrentParticipationPeriodIndex()), periodHistory = [], setPage }) {
   const [rosterSettings] = useRosterSettings();
   const currentRow = useMemo(() => (participationSummary?.rows || []).find((row) => Number(row.memberId) === Number(info.memberId)), [participationSummary, info.memberId]);
   const activityColumns = participationSummary?.activityColumns || [];
@@ -2374,12 +2374,12 @@ function ProfileCard({ member, info, incompleteCollections = [], onCompleteColle
             <b>미완료 컬렉템·스킬</b>
             <p>{incompleteCollections.length ? '배운 스킬을 체크하면 완료 처리되고 목록에서 사라집니다.' : '모든 컬렉템과 스킬이 완료 상태입니다.'}</p>
           </div>
-          {!!onCompleteCollection && <strong>잘못 체크 시 운영진 문의</strong>}
+          {!!onCompleteCollection && <strong>본인 항목만 저장됩니다.</strong>}
         </div>
         <div className="my-collection-chip-list">
           {incompleteCollections.map((item) =>
             onCompleteCollection ? (
-              <button type="button" key={item.itemId} disabled={Number(completingCollectionId) === Number(item.itemId)} onClick={() => onCompleteCollection(item)}>
+              <button type="button" key={item.itemId} disabled={completingCollectionId != null} onClick={() => onCompleteCollection(item)}>
                 <span aria-hidden="true">✓</span>
                 {Number(completingCollectionId) === Number(item.itemId) ? '처리 중' : item.itemName}
               </button>
@@ -2389,6 +2389,7 @@ function ProfileCard({ member, info, incompleteCollections = [], onCompleteColle
           )}
           {!incompleteCollections.length && <span className="complete-message">완료된 상태입니다.</span>}
         </div>
+        {collectionMessage && <p role="status">{collectionMessage}</p>}
       </div>
     </section>
   );
@@ -8234,7 +8235,9 @@ function MyPage({ member, setPage, favoritePages = [], onMemberUpdate }) {
   const [collectionRefreshKey, setCollectionRefreshKey] = useState(0);
   const [completingCollectionId, setCompletingCollectionId] = useState(null);
   const [collectionMessage, setCollectionMessage] = useState('');
-  const incompleteCollections = useIncompleteCollections(member.memberId, collectionRefreshKey);
+  const [completedCollectionIds, setCompletedCollectionIds] = useState([]);
+  const incompleteCollections = useIncompleteCollections(member.memberId, collectionRefreshKey)
+    .filter((item) => !completedCollectionIds.includes(item.itemId));
   useEffect(() => {
     request(`/members/${member.memberId}/my-info`)
       .then(setInfo)
@@ -8300,7 +8303,7 @@ function MyPage({ member, setPage, favoritePages = [], onMemberUpdate }) {
     }
   };
   const completeCollection = async (item) => {
-    if (!window.confirm(`${item.itemName}을(를) 배운 것으로 완료 체크할까요?\n완료 후 취소는 운영진만 가능합니다.`)) return;
+    if (completingCollectionId != null) return;
     setCompletingCollectionId(item.itemId);
     setCollectionMessage('');
     try {
@@ -8314,6 +8317,7 @@ function MyPage({ member, setPage, favoritePages = [], onMemberUpdate }) {
           actorMemberId: member.memberId,
         }),
       });
+      setCompletedCollectionIds((ids) => [...ids, item.itemId]);
       setCollectionRefreshKey((value) => value + 1);
       setCollectionMessage(`${item.itemName}을(를) 완료 처리했습니다.`);
     } catch (err) {
@@ -8335,8 +8339,8 @@ function MyPage({ member, setPage, favoritePages = [], onMemberUpdate }) {
         incompleteCollections={incompleteCollections}
         onCompleteCollection={completeCollection}
         completingCollectionId={completingCollectionId}
+        collectionMessage={collectionMessage}
       />
-      {collectionMessage && <p className="vault-message">{collectionMessage}</p>}
       <section className="white-card">
         <h2>계정 정보</h2>
         <div className="detail-grid">

@@ -61,6 +61,14 @@ class CollectionEditPermissionsTest {
         assertThatThrownBy(() -> controller.updateCollectionStatus(request(2L, "완료"), auth("1"))).isInstanceOf(SecurityException.class);
         verifyNoInteractions(statuses);
     }
+    @Test void myPageCanCompleteOwnLockedSkillDuringWindow() {
+        stateLookup(true); status.setState("미완료");
+        when(statuses.save(status)).thenReturn(status);
+        controller.updateOwnCollectionStatus(request(1L, "완료"), auth("1"));
+        assertThat(status.getState()).isEqualTo("완료");
+        assertThat(status.getLocked()).isTrue();
+        verify(histories).save(any());
+    }
     @Test void spoofedActorAndAnonymousRequestsAreRejected() {
         assertThatThrownBy(() -> controller.updateCollectionStatus(request(1L, "완료"), auth("2"))).isInstanceOf(SecurityException.class);
         assertThatThrownBy(() -> controller.updateCollectionStatus(request(1L, "완료"), null)).isInstanceOf(SecurityException.class);
