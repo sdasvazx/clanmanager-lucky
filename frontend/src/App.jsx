@@ -7877,7 +7877,12 @@ function CollectionPage({ member }) {
                       <small>{targetMember.characterClass || '-'}</small>
                     </td>
                     <td>
-                      <span className={`clan-badge ${normalize(canonicalClanName(targetMember.guildName))}`}>{canonicalClanName(targetMember.guildName)}</span>
+                      <span
+                        className={`clan-badge ${normalize(canonicalClanName(targetMember.guildName))}`}
+                        style={rosterBadgeStyle(rosterSettings, 'clans', canonicalClanName(targetMember.guildName))}
+                      >
+                        {canonicalClanName(targetMember.guildName)}
+                      </span>
                     </td>
                     <td className={belowCut ? 'rate-below-cut' : ''}>{Number(participation.current || 0).toFixed(1)}%</td>
                     {isAdmin && <td className="collection-admin-power">{formatNumber(targetMember.sortableCombatPower)}</td>}
