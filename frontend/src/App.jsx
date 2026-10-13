@@ -5900,7 +5900,7 @@ function PaymentPage({ member }) {
   );
 }
 
-const DISTRIBUTION_CLANS = ['운좋은'];
+const DISTRIBUTION_CLANS = ['운좋은', '우말', '아쿠아'];
 
 function DistributionAdminPage({ member }) {
   const initialSettings = {
@@ -5911,9 +5911,9 @@ function DistributionAdminPage({ member }) {
     totalDiamonds: 0,
     totalParticipationDiamonds: 0,
     totalPowerDiamonds: 0,
-    clanDiamonds: { 운좋은: 0 },
-    participationDiamonds: { 운좋은: 0 },
-    powerDiamonds: { 운좋은: 0 },
+    clanDiamonds: { 운좋은: 0, 우말: 0, 아쿠아: 0 },
+    participationDiamonds: { 운좋은: 0, 우말: 0, 아쿠아: 0 },
+    powerDiamonds: { 운좋은: 0, 우말: 0, 아쿠아: 0 },
     memo: '',
   };
   const [settings, setSettings] = useState(initialSettings);
@@ -6182,6 +6182,20 @@ function DistributionAdminPage({ member }) {
         </div>
       </div>
       {message && <p className="vault-message">{message}</p>}
+      <section className="white-card distribution-rule-guide">
+        <div className="section-heading compact">
+          <div>
+            <h2>분배금 산정 기준</h2>
+            <p className="subtle">운좋은·우말·아쿠아 클랜원을 아래 기준으로 계산합니다.</p>
+          </div>
+        </div>
+        <div className="info-box">
+          <p><b>참여분배</b> · 선택한 회차의 참석 횟수와 전체 활동 횟수를 합산해 통합 참여율을 구하고, 참여율 컷을 넘긴 인원에게 최종 참여점수 비율대로 배분합니다.</p>
+          <p><b>투력분배</b> · 현재 전투력이 투력 컷 이상인 인원에게 투력점수 비율대로 배분합니다. 투력점수는 이전 전투력의 구간별 누적점수와 이후 성장분 추가점수를 합산합니다.</p>
+          <p><b>최종 지급액</b> · 참여분배 + 투력분배 − 결승전·클랜수호 미참여 패널티이며, 결과가 0보다 작으면 0으로 처리합니다.</p>
+          <p><b>분배 모드</b> · 클랜별 분배는 클랜마다 입력한 금액을 각 클랜 내부에서 나누고, 전체 분배는 세 클랜을 합쳐 하나의 금액으로 나눕니다.</p>
+        </div>
+      </section>
       <div className="distribution-toolbar">
         <label>
           히스토리 보기

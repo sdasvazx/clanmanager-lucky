@@ -51,7 +51,7 @@ public class DistributionService {
 
     private static final Long VAULT_ID = 1L;
     private static final long ABSENCE_PENALTY_DIAMONDS = 1_000L;
-    private static final List<String> CLAN_ORDER = List.of("운좋은");
+    private static final List<String> CLAN_ORDER = List.of("운좋은", "우말", "아쿠아");
 
     private final ParticipationService participationService;
     private final MemberRepository memberRepository;
@@ -776,6 +776,8 @@ public class DistributionService {
         }
         String normalized = raw.trim().toLowerCase();
         if (normalized.contains("운좋")) return "운좋은";
+        if (normalized.contains("우말")) return "우말";
+        if (normalized.contains("아쿠아")) return "아쿠아";
         if (normalized.contains("로망")) return "로망";
         if (normalized.contains("z") || normalized.contains("ｚ")) return "귀신Z";
         if (normalized.contains("귀신")) return "귀신";
