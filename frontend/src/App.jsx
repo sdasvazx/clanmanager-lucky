@@ -7752,27 +7752,6 @@ function CollectionPage({ member }) {
     downloadExcelCsv(`던컨2-컬렉현황-${today()}.csv`, headers, rows);
     setMessage(`현재 표시된 ${rows.length}명의 컬렉현황을 엑셀용 CSV로 내보냈습니다.`);
   };
-  const exportCollectionMembers = () => {
-    if (!sortedCollectionMembers.length) {
-      setMessage('내보낼 클랜원이 없습니다.');
-      return;
-    }
-    const headers = ['No.', '닉네임', '클랜', '클래스', '레벨', '전투력', '신화여부', '에노크여부', '상태', '권한'];
-    const rows = sortedCollectionMembers.map((targetMember, index) => [
-      index + 1,
-      targetMember.characterName,
-      canonicalClanName(targetMember.guildName),
-      targetMember.characterClass || '',
-      targetMember.level || 0,
-      Number(targetMember.combatPower || 0),
-      targetMember.mythStatus || 'X',
-      targetMember.enochEnabled ? 'O' : 'X',
-      targetMember.status || (targetMember.active === false ? '비활성' : '활동중'),
-      roleLabel(targetMember.role),
-    ]);
-    downloadExcelCsv(`던컨2-클랜원명단-${today()}.csv`, headers, rows);
-    setMessage(`현재 표시된 ${rows.length}명의 클랜원 명단을 엑셀용 CSV로 내보냈습니다.`);
-  };
   return (
     <>
       <div className="page-title">
@@ -7806,9 +7785,6 @@ function CollectionPage({ member }) {
           <div className="page-actions">
             <button type="button" className="outline-button no-margin" disabled={!sortedCollectionMembers.length || !visibleItems.length} onClick={exportCollectionStatus}>
               📊 컬렉현황 엑셀
-            </button>
-            <button type="button" className="outline-button no-margin" disabled={!sortedCollectionMembers.length} onClick={exportCollectionMembers}>
-              👥 클랜원 명단 엑셀
             </button>
             <span className="result-count">
               완료 {completedCount} / {totalCount}
@@ -9104,7 +9080,7 @@ function Admin({ member, setPage, onMemberUpdate, memberOnly = false, favorites 
             ) : (
               <>
                 <button className="primary-button no-margin" disabled={!filteredMembers.length} onClick={exportMembersToExcel}>
-                  📊 엑셀 내보내기
+                  👥 클랜원 명단 엑셀
                 </button>
                 <button className="role-button danger" disabled={loadingId === 'reset-roster'} onClick={resetMemberRoster}>
                   {loadingId === 'reset-roster' ? '초기화 중...' : '명단 초기화'}
