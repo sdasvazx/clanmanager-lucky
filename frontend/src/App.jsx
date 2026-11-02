@@ -163,6 +163,25 @@ const copyToClipboard = async (text) => {
   document.execCommand('copy');
   document.body.removeChild(textarea);
 };
+const downloadExcelCsv = (filename, headers, rows) => {
+  const escapeCsvCell = (value) => {
+    const text = String(value ?? '')
+      .replace(/\r?\n/g, ' ')
+      .trim();
+    const safeText = /^[=+\-@]/.test(text) ? `\t${text}` : text;
+    return /[",\n]/.test(safeText) ? `"${safeText.replace(/"/g, '""')}"` : safeText;
+  };
+  const csv = `\uFEFF${[headers, ...rows].map((row) => row.map(escapeCsvCell).join(',')).join('\r\n')}`;
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+};
 const imageFileToCompressedDataUrl = (file, maxWidth = 1400, maxHeight = 1400, quality = 0.82) =>
   new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -7711,6 +7730,49 @@ function CollectionPage({ member }) {
       itemKeyword: '',
       state: 'all',
     });
+  const exportCollectionStatus = () => {
+    if (!sortedCollectionMembers.length || !visibleItems.length) {
+      setMessage('내보낼 컬렉현황이 없습니다.');
+      return;
+    }
+    const headers = ['No.', '닉네임', '클랜', '클래스', '현재 참여율', '전투력', '과거 평균 참여율(2주)', ...visibleItems.map((item) => item.itemName)];
+    const rows = sortedCollectionMembers.map((targetMember, index) => {
+      const participation = participationByMember[Number(targetMember.memberId)] || { current: 0, pastAverage: 0 };
+      return [
+        index + 1,
+        targetMember.characterName,
+        canonicalClanName(targetMember.guildName),
+        targetMember.characterClass || '',
+        `${Number(participation.current || 0).toFixed(1)}%`,
+        Number(targetMember.combatPower || 0),
+        `${Number(participation.pastAverage || 0).toFixed(1)}%`,
+        ...visibleItems.map((item) => collectionCell(targetMember, item).state),
+      ];
+    });
+    downloadExcelCsv(`던컨2-컬렉현황-${today()}.csv`, headers, rows);
+    setMessage(`현재 표시된 ${rows.length}명의 컬렉현황을 엑셀용 CSV로 내보냈습니다.`);
+  };
+  const exportCollectionMembers = () => {
+    if (!sortedCollectionMembers.length) {
+      setMessage('내보낼 클랜원이 없습니다.');
+      return;
+    }
+    const headers = ['No.', '닉네임', '클랜', '클래스', '레벨', '전투력', '신화여부', '에노크여부', '상태', '권한'];
+    const rows = sortedCollectionMembers.map((targetMember, index) => [
+      index + 1,
+      targetMember.characterName,
+      canonicalClanName(targetMember.guildName),
+      targetMember.characterClass || '',
+      targetMember.level || 0,
+      Number(targetMember.combatPower || 0),
+      targetMember.mythStatus || 'X',
+      targetMember.enochEnabled ? 'O' : 'X',
+      targetMember.status || (targetMember.active === false ? '비활성' : '활동중'),
+      roleLabel(targetMember.role),
+    ]);
+    downloadExcelCsv(`던컨2-클랜원명단-${today()}.csv`, headers, rows);
+    setMessage(`현재 표시된 ${rows.length}명의 클랜원 명단을 엑셀용 CSV로 내보냈습니다.`);
+  };
   return (
     <>
       <div className="page-title">
@@ -7741,9 +7803,17 @@ function CollectionPage({ member }) {
             <p className="subtle">{selfEditWindow ? '수정 기간 중에는 잠금·완료 여부와 관계없이 본인 항목만 변경할 수 있습니다. 운영자는 모든 클랜원의 항목을 수정할 수 있습니다.' : '일반 클랜원은 본인의 잠기지 않은 미완료 항목만 변경할 수 있습니다. 잠금 해제와 완료 취소는 운영진에게 문의해 주세요.'}</p>
             {isAdmin && <span className="admin-badge">전투력·잠금 기능 운영자 전용</span>}
           </div>
-          <span className="result-count">
-            완료 {completedCount} / {totalCount}
-          </span>
+          <div className="page-actions">
+            <button type="button" className="outline-button no-margin" disabled={!sortedCollectionMembers.length || !visibleItems.length} onClick={exportCollectionStatus}>
+              📊 컬렉현황 엑셀
+            </button>
+            <button type="button" className="outline-button no-margin" disabled={!sortedCollectionMembers.length} onClick={exportCollectionMembers}>
+              👥 클랜원 명단 엑셀
+            </button>
+            <span className="result-count">
+              완료 {completedCount} / {totalCount}
+            </span>
+          </div>
         </div>
         <div className="collection-cut-panel">
           <div>

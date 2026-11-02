@@ -825,14 +825,32 @@ public class ManagementRecordController {
         }
     }
 
-    public record MemberCollectionDto(Long memberId, String characterName, String guildName, String characterClass, Integer combatPower) {
+    public record MemberCollectionDto(
+            Long memberId,
+            String characterName,
+            String guildName,
+            String characterClass,
+            Integer level,
+            Integer combatPower,
+            String mythStatus,
+            Boolean enochEnabled,
+            String status,
+            MemberRole role,
+            Boolean active
+    ) {
         public static MemberCollectionDto from(Member member) {
             return new MemberCollectionDto(
                     member.getMemberId(),
                     member.getCharacterName(),
                     member.getGuildName(),
                     member.getCharacterClass(),
-                    member.getCombatPower()
+                    member.getLevel(),
+                    member.getCombatPower(),
+                    member.getMythStatus(),
+                    member.getEnochEnabled(),
+                    member.getStatus(),
+                    member.getRole(),
+                    member.getActive()
             );
         }
     }
